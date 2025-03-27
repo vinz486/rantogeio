@@ -1,13 +1,12 @@
-# ESP32 Clock Controller
+# Rantoge ESP32 Clock Controller
 
-This project is a clock controller for ESP32 that drives stepper motors to control hour and minute hands of an analog clock.
+This project is a clock controller for Rantoge ESP32 that drives stepper motors to control hour and minute hands of an analog clock.
 
 ## Features
 
 - Wifi connectivity with access point mode for configuration
 - Synchronization with NTP
 - CASIO hourly beep function
-- Optional GPS module support
 - Calibration functions
 - Web interface for configuration
 - Button control support
