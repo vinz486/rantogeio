@@ -11,8 +11,7 @@ enum time_source_t {
   NONE,
   SNTP,
   WEB,
-  BUTTONS,
-  GPS
+  BUTTONS
 };
 
 class ClockManager {
@@ -28,6 +27,7 @@ public:
   void set_displayed_time_to_current();
   void toggle_demo();
   void set_casio(String casio);
+  void save_offsets(int *hour_offsets, int *minute_offsets);
 
   void set_logger(logger_cb_t logger) {
     _logger = logger;
@@ -85,6 +85,8 @@ private:
   state_t _state = RUN;
   bool _flagCurrentMinute;
   bool _flagZeroMinute;
+  int _hour_offsets[24];
+  int _minute_offsets[60];
 
   StepperDriver _stepper;
   Preferences _preferences;
@@ -94,6 +96,7 @@ private:
   void sync_to_current_time();
   void log_current_time();
   void set_minutes();
+  void load_offsets();
   void adjust_displayed_hour(int count);
   void adjust_displayed_minute(int count);
 };

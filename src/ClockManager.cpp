@@ -6,6 +6,8 @@
 void ClockManager::begin() {
   _stepper.begin();
 
+  load_offsets();
+
   _preferences.begin("time", false);
   String casio = _preferences.getString("casio", "");
   _preferences.end();
@@ -226,7 +228,15 @@ void ClockManager::sync_to_current_time() {
     offsetMinute--;
     adjust_displayed_minute(1);
 
-    int steps =_stepper.step(true, true);
+    int hour_offset = _hour_offsets[_displayedHour];
+    if (hour_offset != 0) {
+      (*_logger)("Applying hour offset: %d for H:%02d", hour_offset, _displayedHour);
+    }
+    int minute_offset = _minute_offsets[_displayedMinute];
+    if (minute_offset != 0) {
+      (*_logger)("Applying minute offset: %d for M:%02d", minute_offset, _displayedMinute);
+    }
+    int steps =_stepper.step(true, true, hour_offset, minute_offset);
     (*_logger)("  Advanced hour in %d steps and minute", steps);
   }
 
@@ -234,7 +244,11 @@ void ClockManager::sync_to_current_time() {
     offsetHour--;
     adjust_displayed_hour(1);
 
-    int steps = _stepper.step(true, false);
+    int hour_offset = _hour_offsets[_displayedHour];
+    if (hour_offset != 0) {
+      (*_logger)("Applying hour offset: %d for H:%02d", hour_offset, _displayedHour);
+    }
+    int steps = _stepper.step(true, false, hour_offset);
     (*_logger)("  Advanced hour in %d steps", steps);
   }
 
@@ -242,7 +256,11 @@ void ClockManager::sync_to_current_time() {
     offsetMinute--;
     adjust_displayed_minute(1);
 
-    int steps = _stepper.step(false, true);
+    int minute_offset = _minute_offsets[_displayedMinute];
+    if (minute_offset != 0) {
+      (*_logger)("Applying minute offset: %d for M:%02d", minute_offset, _displayedMinute);
+    }
+    int steps = _stepper.step(false, true, 0, minute_offset);
     (*_logger)("  Advanced minute in %d steps", steps);
   }
 }
@@ -313,4 +331,56 @@ void ClockManager::set_casio(String casio) {
   _casio.set_casio(casio);
 
   (*_logger)("Set CASIO to %s", casio);
+}
+
+void ClockManager::load_offsets() {
+  _preferences.begin("offsets", true);
+
+  for (int i = 0; i < 24; i++) {
+    char key[5];
+    sprintf(key, "h%d", i);
+    _hour_offsets[i] = _preferences.getInt(key, 0);
+  }
+
+  for (int i = 0; i < 60; i++) {
+    char key[5];
+    sprintf(key, "m%d", i);
+    _minute_offsets[i] = _preferences.getInt(key, 0);
+  }
+
+  _preferences.end();
+  (*_logger)("Loaded offsets");
+}
+
+void ClockManager::save_offsets(int *hour_offsets, int *minute_offsets) {
+  _preferences.begin("offsets", false);
+
+  for (int i = 0; i < 24; i++) {
+    char key[5];
+    sprintf(key, "h%d", i);
+    if (hour_offsets[i] == 0) {
+      if (_preferences.isKey(key)) {
+        _preferences.remove(key);
+      }
+    } else {
+      _preferences.putInt(key, hour_offsets[i]);
+    }
+    _hour_offsets[i] = hour_offsets[i];
+  }
+
+  for (int i = 0; i < 60; i++) {
+    char key[5];
+    sprintf(key, "m%d", i);
+    if (minute_offsets[i] == 0) {
+      if (_preferences.isKey(key)) {
+        _preferences.remove(key);
+      }
+    } else {
+      _preferences.putInt(key, minute_offsets[i]);
+    }
+    _minute_offsets[i] = minute_offsets[i];
+  }
+
+  _preferences.end();
+  (*_logger)("Saved offsets");
 }

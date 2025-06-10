@@ -1,8 +1,7 @@
-#include <Arduino.h>
 #include "settings.h"
 
 #if ENABLE_BUTTONS == 1
-#include <OneButton.h>
+#include <espasyncbutton.hpp>
 #endif
 
 #if ENABLE_WIFI == 1
@@ -28,8 +27,8 @@ ClockManager clock_manager;
 TimeZoneManager time_zone_manager;
 
 #if ENABLE_BUTTONS == 1
-OneButton left_button(PIN_LEFT_BUTTON, true); // true = LOW active
-OneButton right_button(PIN_RIGHT_BUTTON, true); // true = LOW active
+AsyncEventButton left_button(PIN_LEFT_BUTTON, LOW);
+AsyncEventButton right_button(PIN_RIGHT_BUTTON, LOW);
 #endif
 
 #if ENABLE_WIFI == 1
@@ -42,11 +41,9 @@ WifiManager wifi_manager;
 typedef void (*logger_cb_t) (const char * format, ...);
 
 void send_message(const char *format, ...);
-
 #if ENABLE_WIFI == 1
 void start_server();
 #endif
-
 #if ENABLE_BUTTONS == 1
 void start_buttons();
 #endif
@@ -80,18 +77,13 @@ void setup() {
   time_zone_manager.set_logger(send_message);
   time_zone_manager.begin(&clock_manager);
 
-
 }
 
 void loop() {
-#if ENABLE_BUTTONS == 1
-  left_button.tick();
-  right_button.tick();
-#endif
 
   clock_manager.tick();
 
-  delay(10); // Ridotto per garantire una migliore reattività dei pulsanti
+  delay(1000);
 }
 
 void send_message(const char *format, ...) {
@@ -121,7 +113,11 @@ String processor(const String& var)
 
 void start_server() {
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send_P(200, "text/html", CONFIG_HTML, processor);
+    AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", CONFIG_HTML, processor);
+    response->addHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    response->addHeader("Pragma", "no-cache");
+    response->addHeader("Expires", "0");
+    request->send(response);
   });
 
   server.on("/set-displayed", HTTP_POST, [](AsyncWebServerRequest *request) {
@@ -224,6 +220,88 @@ void start_server() {
     request->send_P(200, "text/plain", "OK");
   });
 
+  server.on("/get-settings", HTTP_GET, [](AsyncWebServerRequest *request) {
+    String response = "{";
+
+    // WiFi SSID
+    Preferences wifi_prefs;
+    wifi_prefs.begin("wifi", true);
+    response += "\"wifi_ssid\":\"" + wifi_prefs.getString("ssid", "") + "\",";
+    wifi_prefs.end();
+
+    // Time Zone
+    Preferences tz_prefs;
+    tz_prefs.begin("time-zone", true);
+    response += "\"tz_name\":\"" + tz_prefs.getString("name", "") + "\",";
+    tz_prefs.end();
+
+    // CASIO mode
+    Preferences time_prefs;
+    time_prefs.begin("time", true);
+    response += "\"casio_mode\":\"" + time_prefs.getString("casio", "off") + "\",";
+    time_prefs.end();
+
+    // Date
+    struct tm timeinfo;
+    time_t now = time(0);
+    localtime_r(&now, &timeinfo);
+    response += "\"date\":{";
+    response += "\"day\":" + String(timeinfo.tm_mday) + ",";
+    response += "\"month\":" + String(timeinfo.tm_mon + 1) + ",";
+    response += "\"year\":" + String(timeinfo.tm_year + 1900);
+    response += "},";
+
+    // Offsets
+    response += "\"offsets\":{\"hours\":[";
+    Preferences offsets_prefs;
+    offsets_prefs.begin("offsets", true);
+    for (int i = 0; i < 24; i++) {
+      char key[5];
+      sprintf(key, "h%d", i);
+      response += offsets_prefs.getInt(key, 0);
+      if (i < 23) response += ",";
+    }
+    response += "],\"minutes\":[";
+    for (int i = 0; i < 60; i++) {
+      char key[5];
+      sprintf(key, "m%d", i);
+      response += offsets_prefs.getInt(key, 0);
+      if (i < 59) response += ",";
+    }
+    response += "]}}";
+    offsets_prefs.end();
+
+    request->send(200, "application/json", response);
+  });
+
+  server.on("/set-offsets", HTTP_POST, [](AsyncWebServerRequest *request) {
+    int hour_offsets[24];
+    int minute_offsets[60];
+
+    for (int i = 0; i < 24; i++) {
+      char key[5];
+      sprintf(key, "h%d", i);
+      if (request->hasParam(key, true)) {
+        hour_offsets[i] = request->getParam(key, true)->value().toInt();
+      } else {
+        hour_offsets[i] = 0;
+      }
+    }
+
+    for (int i = 0; i < 60; i++) {
+      char key[5];
+      sprintf(key, "m%d", i);
+      if (request->hasParam(key, true)) {
+        minute_offsets[i] = request->getParam(key, true)->value().toInt();
+      } else {
+        minute_offsets[i] = 0;
+      }
+    }
+
+    clock_manager.save_offsets(hour_offsets, minute_offsets);
+    request->send_P(200, "text/plain", "OK");
+  });
+
   events.onConnect([](AsyncEventSourceClient *client) {
     if (client->lastId()) {
       Serial.printf("Client reconnected. Last message ID that it got is: %u\n", client->lastId());
@@ -242,79 +320,65 @@ void start_server() {
 #endif
 
 #if ENABLE_BUTTONS == 1
-// Handler per click singolo sul pulsante sinistro
-void handleLeftClick() {
-  send_message("Left click");
-  clock_manager.increment_hour();
-}
-
-// Handler per doppio click sul pulsante sinistro
-void handleLeftDoubleClick() {
-  send_message("Left double click");
-  clock_manager.decrement_hour();
-}
-
-// Handler per click lungo sul pulsante sinistro
-void handleLeftLongPressStart() {
-  send_message("Left long press");
-  clock_manager.request_calibrate_hour();
-}
-
-// Handler per rilascio dopo click lungo sul pulsante sinistro
-void handleLeftLongPressStop() {
-  send_message("Left long release");
-  clock_manager.request_end_calibrate();
-}
-
-// Handler per click multiplo sul pulsante sinistro (callback senza parametri)
-void handleLeftMultiClick() {
-  send_message("Left triple click");
-  clock_manager.toggle_demo();
-}
-
-// Handler per click singolo sul pulsante destro
-void handleRightClick() {
-  send_message("Right click");
-  clock_manager.increment_minute();
-}
-
-// Handler per doppio click sul pulsante destro
-void handleRightDoubleClick() {
-  send_message("Right double click");
-  clock_manager.decrement_minute();
-}
-
-// Handler per click lungo sul pulsante destro
-void handleRightLongPressStart() {
-  send_message("Right long press");
-  clock_manager.request_calibrate_minute();
-}
-
-// Handler per rilascio dopo click lungo sul pulsante destro
-void handleRightLongPressStop() {
-  send_message("Right long release");
-  clock_manager.request_end_calibrate();
-}
-
-// Handler per click multiplo sul pulsante destro (callback senza parametri)
-void handleRightMultiClick() {
-  send_message("Right triple click");
-  clock_manager.request_set_minutes();
-}
-
 void start_buttons() {
-  // Configurazione per il pulsante sinistro
-  left_button.attachClick(handleLeftClick);
-  left_button.attachDoubleClick(handleLeftDoubleClick);
-  left_button.attachLongPressStart(handleLeftLongPressStart);
-  left_button.attachLongPressStop(handleLeftLongPressStop);
-  left_button.attachMultiClick(handleLeftMultiClick);
-  
-  // Configurazione per il pulsante destro
-  right_button.attachClick(handleRightClick);
-  right_button.attachDoubleClick(handleRightDoubleClick);
-  right_button.attachLongPressStart(handleRightLongPressStart);
-  right_button.attachLongPressStop(handleRightLongPressStop);
-  right_button.attachMultiClick(handleRightMultiClick);
+  ESP_ERROR_CHECK(esp_event_loop_create_default());
+
+  left_button.begin();
+
+  left_button.onLongPress([]() {
+    send_message("Left long press");
+    clock_manager.request_calibrate_hour();
+  });
+
+  left_button.onLongRelease([]() {
+    send_message("Left long release");
+    clock_manager.request_end_calibrate();
+  });
+
+  left_button.onClick([]() {
+    send_message("Left click");
+    clock_manager.increment_hour();
+  });
+
+  left_button.onMultiClick([](int32_t counter) {
+    if (counter == 2) {
+      send_message("Left double click");
+      clock_manager.decrement_hour();
+    } else if (counter == 3) {
+      send_message("Left triple click");
+      clock_manager.toggle_demo();
+    }
+  });
+
+  left_button.enable();
+
+  right_button.begin();
+
+  right_button.onLongPress([]() {
+    send_message("Right long press");
+    clock_manager.request_calibrate_minute();
+  });
+
+  right_button.onLongRelease([]() {
+    send_message("Right long release");
+    clock_manager.request_end_calibrate();
+  });
+
+  right_button.onClick([]() {
+    send_message("Right click");
+    clock_manager.increment_minute();
+  });
+
+  right_button.onMultiClick([](int32_t counter) {
+    if (counter == 2) {
+      send_message("Right double click");
+      clock_manager.decrement_minute();
+    } else if (counter == 3) {
+      send_message("Right triple click");
+      clock_manager.request_set_minutes();
+    }
+  });
+
+  right_button.enable();
 }
 #endif

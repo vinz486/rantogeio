@@ -8,7 +8,7 @@ class StepperDriver {
 public:
   void begin();
 
-  int step(bool hour, bool minute);
+  int step(bool hour, bool minute, int hour_offset = 0, int minute_offset = 0);
 
   void step_hour(int steps);
   void step_minute(int steps);
@@ -16,8 +16,6 @@ public:
   int calibrate_minute(bool &cont);
 
 private:
-  int get_hour_step_count();
-  int get_minute_step_count();
   Fixer _fixer;
 };
 

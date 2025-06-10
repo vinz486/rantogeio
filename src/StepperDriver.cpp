@@ -17,7 +17,7 @@ void StepperDriver::begin() {
   _fixer.begin();
 }
 
-int StepperDriver::step(bool hour, bool minute) {
+int StepperDriver::step(bool hour, bool minute, int hour_offset, int minute_offset) {
 
   if (!hour && !minute) {
     return 0;
@@ -35,11 +35,11 @@ int StepperDriver::step(bool hour, bool minute) {
 
   delayMicroseconds(2000);
 
-  int hour_steps = hour ? get_hour_step_count() : 0;
-  int minute_steps = minute ? get_minute_step_count() : 0;
+  int hour_steps = hour ? (492 + hour_offset) * MICROSTEPPING_MULTIPLIER : 0;
+  int minute_steps = minute ? (1180 + minute_offset) * MICROSTEPPING_MULTIPLIER : 0;
 
-  int log_minute_steps = minute_steps / MICROSTEPPING_MULTIPLIER;
-  int log_hour_steps = hour_steps / MICROSTEPPING_MULTIPLIER;
+  int log_minute_steps = (minute ? 1180 + minute_offset : 0);
+  int log_hour_steps = (hour ? 492 + hour_offset : 0);
 
   int offset = 0;
   while(hour_steps > 0 || minute_steps > 0) {
@@ -78,27 +78,6 @@ int StepperDriver::step(bool hour, bool minute) {
   return 0;
 }
 
-int StepperDriver::get_hour_step_count() {
-  static int offset = 0;
-  
-  int steps = 492;
-  offset = (offset + 1) % 20;
-  if(offset == 0)
-    steps -= 9;
-
-  return steps * MICROSTEPPING_MULTIPLIER;
-}
-
-int StepperDriver::get_minute_step_count() {
-  static int offset = 0;
-  
-  int steps = 1180;
-  offset = (offset + 1) % 25;
-  if(offset == 0)
-    steps -= 7;
-
-  return steps * MICROSTEPPING_MULTIPLIER;
-}
 
 int StepperDriver::calibrate_hour(bool &cont) {
   digitalWrite(PIN_HOUR_SLEEP, LOW);
