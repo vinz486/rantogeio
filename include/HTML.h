@@ -164,32 +164,6 @@ const char CONFIG_HTML[] = R"rawliteral(
             background-color: #f8f9fa;
         }
         
-        /* Buttons */
-        .form-group button,
-        button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 1rem 1.5rem;
-            border-radius: 6px;
-            font-size: 1.1rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            width: 100%;
-        }
-        
-        .form-group button:hover,
-        button:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-        }
-        
-        .form-group button:active,
-        button:active {
-            transform: translateY(0);
-        }
-        
         /* Form Rows */
         .form-row {
             display: flex;
@@ -221,12 +195,11 @@ const char CONFIG_HTML[] = R"rawliteral(
             border: 1px solid #e9ecef;
         }
         
-        .offset-item button {
-            width: auto;
-            padding: 0.4rem 0.8rem;
-            margin-left: 0.5rem;
-            font-size: 0.875rem;
+        .offset-item span {
+            font-family: monospace;
+            white-space: pre;
         }
+        
         
         /* Log Card */
         .log {
@@ -283,18 +256,10 @@ const char CONFIG_HTML[] = R"rawliteral(
         
         /* Responsive Design */
         @media (max-width: 768px) {
-            body {
-                font-size: 1.2rem;
-            }
-
             .topnav {
                 flex-direction: column;
                 gap: 1rem;
                 text-align: center;
-            }
-
-            .topnav h1 {
-                font-size: 2rem;
             }
             
             .content {
@@ -309,37 +274,10 @@ const char CONFIG_HTML[] = R"rawliteral(
             .card {
                 padding: 1.5rem;
             }
-
-            .card h2 {
-                font-size: 1.6rem;
-            }
-
-            .form-group {
-                margin-bottom: 0; /* Use gap for spacing in flex containers */
-            }
-
-            .form-group label {
-                font-size: 1.2rem;
-                margin-bottom: 0.8rem;
-            }
-
-            .form-group input[type="text"],
-            .form-group input[type="password"],
-            .form-group input[type="number"],
-            .form-group select,
-            .form-group button,
-            button {
-                font-size: 1.2rem;
-                padding: 1.2rem;
-            }
             
             .form-row {
                 flex-direction: column;
                 gap: 1rem;
-            }
-            
-            .form-row .form-group {
-                margin-bottom: 0;
             }
 
             .card form {
@@ -350,22 +288,15 @@ const char CONFIG_HTML[] = R"rawliteral(
         }
         
         @media (max-width: 480px) {
-            .topnav h1 {
-                font-size: 1.5rem;
-            }
-            
-            .card h2 {
-                font-size: 1.2rem;
-            }
-            
             .offset-item {
                 flex-direction: column;
-                gap: 0.5rem;
-                align-items: flex-start;
+                gap: 1rem;
+                align-items: stretch;
             }
             
             .offset-item > div {
-                align-self: flex-end;
+                display: flex;
+                gap: 0.5rem;
             }
         }
     </style>
@@ -563,10 +494,12 @@ const char CONFIG_HTML[] = R"rawliteral(
                 if (offset !== 0) {
                     const li = document.createElement('li');
                     li.className = 'offset-item';
-                    li.innerHTML = '<span>Hour ' + index + ': ' + offset + '</span>' +
+                    const signedOffset = (offset > 0 ? '+' : '') + offset;
+                    const text = `Hour   ${index.toString().padStart(2, ' ')}: ${signedOffset.padStart(5, ' ')}`;
+                    li.innerHTML = `<span>${text}</span>` +
                                  '<div>' +
-                                 '<button onclick="showOffsetModal(\'hour\', ' + index + ', ' + offset + ')">Edit</button>' +
-                                 '<button onclick="hourOffsets[' + index + '] = 0; renderOffsets();">Delete</button>' +
+                                 `<button class="btn-offset" onclick="showOffsetModal('hour', ${index}, ${offset})">Edit</button>` +
+                                 `<button class="btn-offset" onclick="hourOffsets[${index}] = 0; renderOffsets();">Delete</button>` +
                                  '</div>';
                     hourList.appendChild(li);
                 }
@@ -578,10 +511,12 @@ const char CONFIG_HTML[] = R"rawliteral(
                 if (offset !== 0) {
                     const li = document.createElement('li');
                     li.className = 'offset-item';
-                    li.innerHTML = '<span>Minute ' + index + ': ' + offset + '</span>' +
+                    const signedOffset = (offset > 0 ? '+' : '') + offset;
+                    const text = `Minute ${index.toString().padStart(2, ' ')}: ${signedOffset.padStart(5, ' ')}`;
+                    li.innerHTML = `<span>${text}</span>` +
                                  '<div>' +
-                                 '<button onclick="showOffsetModal(\'minute\', ' + index + ', ' + offset + ')">Edit</button>' +
-                                 '<button onclick="minuteOffsets[' + index + '] = 0; renderOffsets();">Delete</button>' +
+                                 `<button class="btn-offset" onclick="showOffsetModal('minute', ${index}, ${offset})">Edit</button>` +
+                                 `<button class="btn-offset" onclick="minuteOffsets[${index}] = 0; renderOffsets();">Delete</button>` +
                                  '</div>';
                     minuteList.appendChild(li);
                 }
