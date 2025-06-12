@@ -236,7 +236,7 @@ const char CONFIG_HTML[] = R"rawliteral(
         
         .offset-item {
             display: flex;
-            justify-content: space-between;
+            gap: 1rem;
             align-items: center;
             padding: 1rem;
             margin-bottom: 0.5rem;
@@ -249,6 +249,7 @@ const char CONFIG_HTML[] = R"rawliteral(
             display: flex;
             gap: 1rem;
             align-items: center;
+            flex-grow: 1;
         }
         .offset-value {
             font-family: monospace;
@@ -257,7 +258,13 @@ const char CONFIG_HTML[] = R"rawliteral(
             min-width: 4ch;
         }
         .btn-delete {
-            margin-left: 0.5rem;
+            /* margin-left: 0.5rem; */
+        }
+
+        .offset-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: nowrap;
         }
         
         
@@ -347,18 +354,7 @@ const char CONFIG_HTML[] = R"rawliteral(
             }
         }
         
-        @media (max-width: 480px) {
-            .offset-item {
-                flex-direction: column;
-                gap: 1rem;
-                align-items: stretch;
-            }
-            
-            .offset-item > div {
-                display: flex;
-                gap: 0.5rem;
-            }
-        }
+>>>>>>> REPLACE
     </style>
 </head>
 
@@ -512,6 +508,8 @@ const char CONFIG_HTML[] = R"rawliteral(
                     <ul id="minute-offsets-list"></ul>
                     <button type="button" class="btn" onclick="showOffsetModal('minute')">Add Minute Offset</button>
 
+                    <hr style="margin: 2rem 0; border: none; border-top: 1px solid #e8eaed;">
+
                     <div class="form-group" style="margin-top: 1rem;">
                         <button type="button" id="save-offsets-btn" class="btn" onclick="saveAllOffsets()">Save All Offsets</button>
                     </div>
@@ -577,7 +575,7 @@ const char CONFIG_HTML[] = R"rawliteral(
                     li.className = 'offset-item';
                     const signedOffset = (offset > 0 ? '+' : '') + offset;
                     li.innerHTML = `<div><span class="offset-label">H ${index.toString().padStart(2, '0')}</span><span class="offset-value">${signedOffset}</span></div>` +
-                                 '<div>' +
+                                 '<div class="offset-actions">' +
                                  `<button class="btn btn-small" onclick="showOffsetModal('hour', ${index}, ${offset})">Edit</button>` +
                                  `<button class="btn btn-small btn-delete" onclick="hourOffsets[${index}] = 0; renderOffsets(); markUnsaved();">Delete</button>` +
                                  '</div>';
@@ -593,7 +591,7 @@ const char CONFIG_HTML[] = R"rawliteral(
                     li.className = 'offset-item';
                     const signedOffset = (offset > 0 ? '+' : '') + offset;
                     li.innerHTML = `<div><span class="offset-label">M ${index.toString().padStart(2, '0')}</span><span class="offset-value">${signedOffset}</span></div>` +
-                                 '<div>' +
+                                 '<div class="offset-actions">' +
                                  `<button class="btn btn-small" onclick="showOffsetModal('minute', ${index}, ${offset})">Edit</button>` +
                                  `<button class="btn btn-small btn-delete" onclick="minuteOffsets[${index}] = 0; renderOffsets(); markUnsaved();">Delete</button>` +
                                  '</div>';

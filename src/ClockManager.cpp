@@ -257,16 +257,16 @@ void ClockManager::sync_to_current_time() {
     offsetMinute--;
     adjust_displayed_minute(1);
 
-    if (_calibration_hint) {
-      _casio.beep();
-    }
-
     int minute_offset = _minute_offsets[_displayedMinute];
     if (minute_offset != 0) {
       (*_logger)("Applying minute offset: %d for M:%02d", minute_offset, _displayedMinute);
     }
     int steps = _stepper.step(false, true, 0, minute_offset);
     (*_logger)("  Advanced minute in %d steps", steps);
+
+    if (_calibration_hint) {
+      _casio.beep();
+    }
   }
 }
 
