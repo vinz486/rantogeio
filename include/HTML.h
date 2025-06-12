@@ -180,6 +180,17 @@ const char CONFIG_HTML[] = R"rawliteral(
         .btn-auto {
             width: auto;
         }
+
+        .btn-unsaved {
+            background: linear-gradient(135deg, #e53935 0%, #b71c1c 100%);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(229, 57, 53, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(229, 57, 53, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(229, 57, 53, 0); }
+        }
         
         /* Radio Buttons */
         .form-group input[type="radio"] {
@@ -234,9 +245,19 @@ const char CONFIG_HTML[] = R"rawliteral(
             border: 1px solid #e9ecef;
         }
         
-        .offset-item span {
+        .offset-item > div:first-child {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        .offset-value {
             font-family: monospace;
             white-space: pre;
+            text-align: right;
+            min-width: 4ch;
+        }
+        .btn-delete {
+            margin-left: 0.5rem;
         }
         
         
@@ -486,7 +507,7 @@ const char CONFIG_HTML[] = R"rawliteral(
                     <button type="button" class="btn" onclick="showOffsetModal('minute')">Add Minute Offset</button>
 
                     <div class="form-group" style="margin-top: 1rem;">
-                        <button type="button" class="btn" onclick="saveAllOffsets()">Save All Offsets</button>
+                        <button type="button" id="save-offsets-btn" class="btn" onclick="saveAllOffsets()">Save All Offsets</button>
                     </div>
                 </div>
             </div>
@@ -525,6 +546,21 @@ const char CONFIG_HTML[] = R"rawliteral(
         let hourOffsets = new Array(24).fill(0);
         let minuteOffsets = new Array(60).fill(0);
         let currentEdit = { type: '', index: -1 };
+        let offsetsChanged = false;
+
+        function updateSaveButtonState() {
+            const saveBtn = document.getElementById('save-offsets-btn');
+            if (offsetsChanged) {
+                saveBtn.classList.add('btn-unsaved');
+            } else {
+                saveBtn.classList.remove('btn-unsaved');
+            }
+        }
+
+        function markUnsaved() {
+            offsetsChanged = true;
+            updateSaveButtonState();
+        }
 
         function renderOffsets() {
             const hourList = document.getElementById('hour-offsets-list');
@@ -534,11 +570,10 @@ const char CONFIG_HTML[] = R"rawliteral(
                     const li = document.createElement('li');
                     li.className = 'offset-item';
                     const signedOffset = (offset > 0 ? '+' : '') + offset;
-                    const text = `Hour   ${index.toString().padStart(2, ' ')}: ${signedOffset.padStart(5, ' ')}`;
-                    li.innerHTML = `<span>${text}</span>` +
+                    li.innerHTML = `<div><span class="offset-label">H ${index.toString().padStart(2, '0')}</span><span class="offset-value">${signedOffset}</span></div>` +
                                  '<div>' +
                                  `<button class="btn btn-small" onclick="showOffsetModal('hour', ${index}, ${offset})">Edit</button>` +
-                                 `<button class="btn btn-small" onclick="hourOffsets[${index}] = 0; renderOffsets();">Delete</button>` +
+                                 `<button class="btn btn-small btn-delete" onclick="hourOffsets[${index}] = 0; renderOffsets(); markUnsaved();">Delete</button>` +
                                  '</div>';
                     hourList.appendChild(li);
                 }
@@ -551,11 +586,10 @@ const char CONFIG_HTML[] = R"rawliteral(
                     const li = document.createElement('li');
                     li.className = 'offset-item';
                     const signedOffset = (offset > 0 ? '+' : '') + offset;
-                    const text = `Minute ${index.toString().padStart(2, ' ')}: ${signedOffset.padStart(5, ' ')}`;
-                    li.innerHTML = `<span>${text}</span>` +
+                    li.innerHTML = `<div><span class="offset-label">M ${index.toString().padStart(2, '0')}</span><span class="offset-value">${signedOffset}</span></div>` +
                                  '<div>' +
                                  `<button class="btn btn-small" onclick="showOffsetModal('minute', ${index}, ${offset})">Edit</button>` +
-                                 `<button class="btn btn-small" onclick="minuteOffsets[${index}] = 0; renderOffsets();">Delete</button>` +
+                                 `<button class="btn btn-small btn-delete" onclick="minuteOffsets[${index}] = 0; renderOffsets(); markUnsaved();">Delete</button>` +
                                  '</div>';
                     minuteList.appendChild(li);
                 }
@@ -603,6 +637,7 @@ const char CONFIG_HTML[] = R"rawliteral(
             }
             renderOffsets();
             hideOffsetModal();
+            markUnsaved();
         }
 
         function saveAllOffsets() {
@@ -617,7 +652,13 @@ const char CONFIG_HTML[] = R"rawliteral(
             fetch('/set-offsets', {
                 method: 'POST',
                 body: formData
-            }).then(res => res.text()).then(console.log);
+            }).then(res => {
+                if (res.ok) {
+                    offsetsChanged = false;
+                    updateSaveButtonState();
+                }
+                return res.text();
+            }).then(console.log);
         }
 
         document.addEventListener('DOMContentLoaded', function () {

@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="it">
 
@@ -13,8 +14,7 @@
         }
         
         html {
-            font-size: 100%;
-            -webkit-text-size-adjust: 100%; /* Previene lo zoom del testo su iOS */
+            font-size: 100; /* Previene lo zoom del testo su iOS */
         }
         
         body {
@@ -29,7 +29,7 @@
         
         /* Navigation */
         .topnav {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #667eea 0);
             color: white;
             padding: 1rem 2rem;
             display: flex;
@@ -121,35 +121,12 @@
         .form-group input[type="password"],
         .form-group input[type="number"],
         .form-group select {
-            width: 100%;
-            padding: 1rem;
-            border: 2px solid #e5e7eb;
-            border-radius: 6px;
-            font-size: 1.1rem;
-            transition: border-color 0.3s ease, box-shadow 0.3s ease;
-            background-color: #fafafa;
-            box-sizing: border-box;
-        }
-        
-        .form-group input[type="text"]:focus,
-        .form-group input[type="password"]:focus,
-        .form-group input[type="number"]:focus,
-        .form-group select:focus {
-            outline: none;
-            border-color: #333;
-            box-shadow: 0 0 0 1px #333;
-            background-color: white;
-        }
-
-        /* Buttons */
-        .btn {
-            display: inline-block;
-            width: 100%;
+            width: 100;
             padding: 1rem;
             font-size: 1.1rem;
             font-weight: 600;
             color: white;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #667eea 0);
             border: none;
             border-radius: 6px;
             cursor: pointer;
@@ -181,13 +158,12 @@
         }
 
         .btn-unsaved {
-            background: linear-gradient(135deg, #e53935 0%, #b71c1c 100%);
+            background: linear-gradient(135deg, #e53935 0);
             animation: pulse 1.5s infinite;
         }
 
         @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(229, 57, 53, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(229, 57, 53, 0); }
+            0 { box-shadow: 0 0 0 10px rgba(229, 57, 53, 0); }
             100% { box-shadow: 0 0 0 0 rgba(229, 57, 53, 0); }
         }
         
@@ -569,7 +545,7 @@
                     const li = document.createElement('li');
                     li.className = 'offset-item';
                     const signedOffset = (offset > 0 ? '+' : '') + offset;
-                    li.innerHTML = `<div><span class="offset-label">H ${index.toString().padStart(2, '0')}</span><span class="offset-value">${signedOffset}</span></div>` +
+                    li.innerHTML = `<div><span class="offset-label">H ${index.toString().padStart(2, ' ')}</span><span class="offset-value">${signedOffset}</span></div>` +
                                  '<div>' +
                                  `<button class="btn btn-small" onclick="showOffsetModal('hour', ${index}, ${offset})">Edit</button>` +
                                  `<button class="btn btn-small btn-delete" onclick="hourOffsets[${index}] = 0; renderOffsets(); markUnsaved();">Delete</button>` +
@@ -585,7 +561,7 @@
                     const li = document.createElement('li');
                     li.className = 'offset-item';
                     const signedOffset = (offset > 0 ? '+' : '') + offset;
-                    li.innerHTML = `<div><span class="offset-label">M ${index.toString().padStart(2, '0')}</span><span class="offset-value">${signedOffset}</span></div>` +
+                    li.innerHTML = `<div><span class="offset-label">M ${index.toString().padStart(2, ' ')}</span><span class="offset-value">${signedOffset}</span></div>` +
                                  '<div>' +
                                  `<button class="btn btn-small" onclick="showOffsetModal('minute', ${index}, ${offset})">Edit</button>` +
                                  `<button class="btn btn-small btn-delete" onclick="minuteOffsets[${index}] = 0; renderOffsets(); markUnsaved();">Delete</button>` +

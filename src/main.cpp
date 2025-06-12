@@ -104,16 +104,10 @@ void send_message(const char *format, ...) {
 
 String test = "Ciao";
 
-String processor(const String& var)
-{
-  if(var == "TEST_VAR")
-    return F("Hello world!");
-  return String();
-}
 
 void start_server() {
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", CONFIG_HTML, processor);
+    AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", CONFIG_HTML);
     response->addHeader("Cache-Control", "no-cache, no-store, must-revalidate");
     response->addHeader("Pragma", "no-cache");
     response->addHeader("Expires", "0");
