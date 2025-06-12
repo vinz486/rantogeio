@@ -36,9 +36,9 @@ int StepperDriver::step(bool hour, bool minute, int hour_offset, int minute_offs
   delayMicroseconds(2000);
 
   int hour_steps = hour ? (492 + hour_offset) * MICROSTEPPING_MULTIPLIER : 0;
-  int minute_steps = minute ? (1180 + minute_offset) * MICROSTEPPING_MULTIPLIER : 0;
+  int minute_steps = minute ? (1178 + minute_offset) * MICROSTEPPING_MULTIPLIER : 0;
 
-  int log_minute_steps = (minute ? 1180 + minute_offset : 0);
+  int log_minute_steps = (minute ? 1178 + minute_offset : 0);
   int log_hour_steps = (hour ? 492 + hour_offset : 0);
 
   int offset = 0;
