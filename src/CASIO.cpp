@@ -31,3 +31,7 @@ void CASIO::beep(int hour) {
     tone(PIN_CASIO, CASIO_FREQUENCY, CASIO_DURATION);
   }
 }
+
+void CASIO::beep() {
+  tone(PIN_CASIO, CASIO_FREQUENCY, CASIO_DURATION);
+}

@@ -26,7 +26,7 @@ public:
   void set_current_date(int day, int month, int year);
   void set_displayed_time_to_current();
   void toggle_demo();
-  void set_casio(String casio);
+  void set_casio(String casio, bool calibration_hint);
   void save_offsets(int *hour_offsets, int *minute_offsets);
 
   void set_logger(logger_cb_t logger) {
@@ -91,6 +91,7 @@ private:
   StepperDriver _stepper;
   Preferences _preferences;
   CASIO _casio;
+  bool _calibration_hint;
   logger_cb_t _logger;
 
   void sync_to_current_time();

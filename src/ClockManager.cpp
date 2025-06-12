@@ -10,6 +10,7 @@ void ClockManager::begin() {
 
   _preferences.begin("time", false);
   String casio = _preferences.getString("casio", "");
+  _calibration_hint = _preferences.getBool("cal_hint", false);
   _preferences.end();
   
   _casio.set_casio(casio);
@@ -256,6 +257,10 @@ void ClockManager::sync_to_current_time() {
     offsetMinute--;
     adjust_displayed_minute(1);
 
+    if (_calibration_hint) {
+      _casio.beep();
+    }
+
     int minute_offset = _minute_offsets[_displayedMinute];
     if (minute_offset != 0) {
       (*_logger)("Applying minute offset: %d for M:%02d", minute_offset, _displayedMinute);
@@ -322,15 +327,17 @@ void ClockManager::set_minutes() {
   }
 }
 
-void ClockManager::set_casio(String casio) {
+void ClockManager::set_casio(String casio, bool calibration_hint) {
   
   _preferences.begin("time", false);
   _preferences.putString("casio", casio);
+  _preferences.putBool("cal_hint", calibration_hint);
   _preferences.end();
 
   _casio.set_casio(casio);
+  _calibration_hint = calibration_hint;
 
-  (*_logger)("Set CASIO to %s", casio);
+  (*_logger)("Set CASIO to %s, hint: %d", casio, calibration_hint);
 }
 
 void ClockManager::load_offsets() {

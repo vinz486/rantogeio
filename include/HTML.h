@@ -464,6 +464,12 @@ const char CONFIG_HTML[] = R"rawliteral(
                         <label><input type="radio" name="casio" value="day" id="casio-day"> From 08 to 00</label>
                     </div>
                     <div class="form-group">
+                        <label style="flex-direction: row; align-items: center; gap: 1rem;">
+                            <input type="checkbox" name="calibration_hint" id="calibration_hint" style="transform: scale(1.5);">
+                            Calibration hint
+                        </label>
+                    </div>
+                    <div class="form-group">
                         <button type="submit" class="btn">Save</button>
                     </div>
                 </form>
@@ -700,6 +706,7 @@ const char CONFIG_HTML[] = R"rawliteral(
                     if(data.wifi_ssid) document.getElementById('wifi-ssid').value = data.wifi_ssid;
                     if(data.tz_name) document.getElementById('tz-name').value = data.tz_name;
                     if(data.casio_mode) document.getElementById('casio-' + data.casio_mode).checked = true;
+                    if(data.casio_cal_hint) document.getElementById('calibration_hint').checked = data.casio_cal_hint;
                     if(data.date) {
                         document.getElementById('date-d').value = data.date.day;
                         document.getElementById('date-m').value = data.date.month;

@@ -10,6 +10,7 @@ public:
   void set_casio(const String& casio);
 
   void beep(int hour);
+  void beep();
 
 private:
   String _casio;

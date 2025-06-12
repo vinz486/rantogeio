@@ -170,7 +170,9 @@ void start_server() {
     if (request->hasParam("casio", true)) {
       
       String casio = request->getParam("casio", true)->value();
-      clock_manager.set_casio(casio);
+      bool calibration_hint = request->hasParam("calibration_hint", true);
+
+      clock_manager.set_casio(casio, calibration_hint);
 
       request->send_P(200, "text/plain", "OK");
     } else {
@@ -233,6 +235,7 @@ void start_server() {
     Preferences time_prefs;
     time_prefs.begin("time", true);
     response += "\"casio_mode\":\"" + time_prefs.getString("casio", "off") + "\",";
+    response += "\"casio_cal_hint\":" + String(time_prefs.getBool("cal_hint", false)) + ",";
     time_prefs.end();
 
     // Date
