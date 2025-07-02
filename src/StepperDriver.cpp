@@ -35,11 +35,11 @@ int StepperDriver::step(bool hour, bool minute, int hour_offset, int minute_offs
 
   delayMicroseconds(2000);
 
-  int hour_steps = hour ? (492 + hour_offset) * MICROSTEPPING_MULTIPLIER : 0;
-  int minute_steps = minute ? (1178 + minute_offset) * MICROSTEPPING_MULTIPLIER : 0;
+  int hour_steps = hour ? (HOUR_STEPS_BASE + hour_offset) * MICROSTEPPING_MULTIPLIER : 0;
+  int minute_steps = minute ? (MINUTE_STEPS_BASE + minute_offset) * MICROSTEPPING_MULTIPLIER : 0;
 
-  int log_minute_steps = (minute ? 1178 + minute_offset : 0);
-  int log_hour_steps = (hour ? 492 + hour_offset : 0);
+  int log_minute_steps = (minute ? MINUTE_STEPS_BASE + minute_offset : 0);
+  int log_hour_steps = (hour ? HOUR_STEPS_BASE + hour_offset : 0);
 
   int offset = 0;
   while(hour_steps > 0 || minute_steps > 0) {

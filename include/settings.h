@@ -21,6 +21,8 @@
 
 // ---- OPTIONS --------------------
 
+#define HOUR_STEPS_BASE 492
+#define MINUTE_STEPS_BASE 1177
 #define MICROSTEPPING_MULTIPLIER 16
 #define STEP_INTERVAL 54
 #define SIMULATE_12_HOUR 0
