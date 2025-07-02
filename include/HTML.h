@@ -501,10 +501,18 @@ const char CONFIG_HTML[] = R"rawliteral(
                 <h2>Stepper Offsets</h2>
                 <div id="offsets-container">
                     <h3>Hour Offsets</h3>
+                    <div class="form-group">
+                        <label for="base-hour">Base Steps Hour:</label>
+                        <input type="number" id="base-hour" placeholder="492" />
+                    </div>
                     <ul id="hour-offsets-list"></ul>
                     <button type="button" class="btn" onclick="showOffsetModal('hour')">Add Hour Offset</button>
 
                     <h3>Minute Offsets</h3>
+                    <div class="form-group">
+                        <label for="base-minute">Base Steps Minute:</label>
+                        <input type="number" id="base-minute" placeholder="1177" />
+                    </div>
                     <ul id="minute-offsets-list"></ul>
                     <button type="button" class="btn" onclick="showOffsetModal('minute')">Add Minute Offset</button>
 
@@ -646,6 +654,14 @@ const char CONFIG_HTML[] = R"rawliteral(
 
         function saveAllOffsets() {
             const formData = new FormData();
+            
+            // Add base steps
+            const baseHour = document.getElementById('base-hour').value;
+            const baseMinute = document.getElementById('base-minute').value;
+            if (baseHour !== '') formData.append('base_hour', baseHour);
+            if (baseMinute !== '') formData.append('base_minute', baseMinute);
+            
+            // Add offsets
             for(let i=0; i<24; i++) {
                 formData.append('h' + i, hourOffsets[i]);
             }
@@ -666,6 +682,10 @@ const char CONFIG_HTML[] = R"rawliteral(
         }
 
         document.addEventListener('DOMContentLoaded', function () {
+            // Add listeners for base steps to mark as unsaved
+            document.getElementById('base-hour').addEventListener('input', markUnsaved);
+            document.getElementById('base-minute').addEventListener('input', markUnsaved);
+
             document.querySelectorAll('form').forEach(form => {
                 form.addEventListener('submit', function (event) {
                     if (this.id !== 'offsets-form') {
@@ -695,6 +715,12 @@ const char CONFIG_HTML[] = R"rawliteral(
             fetch('/get-settings')
                 .then(response => response.json())
                 .then(data => {
+                    // Base steps
+                    if(data.base_steps) {
+                        document.getElementById('base-hour').value = data.base_steps.hour;
+                        document.getElementById('base-minute').value = data.base_steps.minute;
+                    }
+
                     // Offsets
                     hourOffsets = data.offsets.hours;
                     minuteOffsets = data.offsets.minutes;

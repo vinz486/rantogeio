@@ -21,8 +21,9 @@
 
 // ---- OPTIONS --------------------
 
-#define HOUR_STEPS_BASE 492
-#define MINUTE_STEPS_BASE 1177
+// Default values for base steps - these will be overridden by stored settings
+extern int HOUR_STEPS_BASE;
+extern int MINUTE_STEPS_BASE;
 #define MICROSTEPPING_MULTIPLIER 16
 #define STEP_INTERVAL 54
 #define SIMULATE_12_HOUR 0

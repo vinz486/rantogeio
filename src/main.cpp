@@ -23,6 +23,10 @@
 #include "ClockManager.h"
 #include "TimeZoneManager.h"
 
+// Global variables for configurable base steps
+int HOUR_STEPS_BASE = 492;    // Default value
+int MINUTE_STEPS_BASE = 1177; // Default value
+
 ClockManager clock_manager;
 TimeZoneManager time_zone_manager;
 
@@ -55,6 +59,13 @@ void setup() {
 #if ENABLE_BUTTONS == 1
   start_buttons();
 #endif
+
+  // Load base steps from preferences
+  Preferences base_prefs;
+  base_prefs.begin("base-steps", true);
+  HOUR_STEPS_BASE = base_prefs.getInt("hour", 492);
+  MINUTE_STEPS_BASE = base_prefs.getInt("minute", 1177);
+  base_prefs.end();
 
   clock_manager.set_logger(send_message);
   clock_manager.begin();
@@ -248,6 +259,12 @@ void start_server() {
     response += "\"year\":" + String(timeinfo.tm_year + 1900);
     response += "},";
 
+    // Base steps
+    response += "\"base_steps\":{";
+    response += "\"hour\":" + String(HOUR_STEPS_BASE) + ",";
+    response += "\"minute\":" + String(MINUTE_STEPS_BASE);
+    response += "},";
+
     // Offsets
     response += "\"offsets\":{\"hours\":[";
     Preferences offsets_prefs;
@@ -274,6 +291,23 @@ void start_server() {
   server.on("/set-offsets", HTTP_POST, [](AsyncWebServerRequest *request) {
     int hour_offsets[24];
     int minute_offsets[60];
+
+    // Handle base steps if provided
+    if (request->hasParam("base_hour", true)) {
+      HOUR_STEPS_BASE = request->getParam("base_hour", true)->value().toInt();
+    }
+    if (request->hasParam("base_minute", true)) {
+      MINUTE_STEPS_BASE = request->getParam("base_minute", true)->value().toInt();
+    }
+
+    // Save base steps to preferences
+    if (request->hasParam("base_hour", true) || request->hasParam("base_minute", true)) {
+      Preferences base_prefs;
+      base_prefs.begin("base-steps", false);
+      base_prefs.putInt("hour", HOUR_STEPS_BASE);
+      base_prefs.putInt("minute", MINUTE_STEPS_BASE);
+      base_prefs.end();
+    }
 
     for (int i = 0; i < 24; i++) {
       char key[5];
