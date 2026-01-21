@@ -50,6 +50,18 @@ public:
     _state = SET_MINUTES;
   }
 
+  void live_calibrate_step(bool is_hour, int direction);
+  
+  void request_fast_forward_hours() {
+    _ff_counter = 0;
+    _state = FAST_FORWARD_HOURS;
+  }
+  
+  void request_fast_forward_minutes() {
+    _ff_counter = 0;
+    _state = FAST_FORWARD_MINUTES;
+  }
+
   void increment_hour() {
     adjust_displayed_hour(-1);
   }
@@ -77,7 +89,9 @@ private:
                  CALIBRATE_HOUR,
                  CALIBRATE_MINUTE,
                  DEMO,
-                 SET_MINUTES };
+                 SET_MINUTES,
+                 FAST_FORWARD_HOURS,
+                 FAST_FORWARD_MINUTES };
 
   bool _calibrating = false;
   int _displayedHour = 0;
@@ -85,8 +99,9 @@ private:
   state_t _state = RUN;
   bool _flagCurrentMinute;
   bool _flagZeroMinute;
-  int _hour_offsets[24];
-  int _minute_offsets[60];
+  int _hour_offsets[24] = {0};  // Initialize to zero to avoid garbage values
+  int _minute_offsets[60] = {0};  // Initialize to zero to avoid garbage values
+  int _ff_counter = 0;
 
   StepperDriver _stepper;
   Preferences _preferences;

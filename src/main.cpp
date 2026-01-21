@@ -23,9 +23,9 @@
 #include "ClockManager.h"
 #include "TimeZoneManager.h"
 
-// Global variables for configurable base steps
-int HOUR_STEPS_BASE = 492;    // Default value
-int MINUTE_STEPS_BASE = 1177; // Default value
+// Global variables for configurable base steps (in microsteps)
+int HOUR_STEPS_BASE = 7872;    // Default value (492 * 16 microstepping)
+int MINUTE_STEPS_BASE = 18832; // Default value (1177 * 16 microstepping)
 
 ClockManager clock_manager;
 TimeZoneManager time_zone_manager;
@@ -60,11 +60,23 @@ void setup() {
   start_buttons();
 #endif
 
-  // Load base steps from preferences
+  // Load base steps from preferences with migration from old format
   Preferences base_prefs;
   base_prefs.begin("base-steps", true);
-  HOUR_STEPS_BASE = base_prefs.getInt("hour", 492);
-  MINUTE_STEPS_BASE = base_prefs.getInt("minute", 1177);
+  HOUR_STEPS_BASE = base_prefs.getInt("hour", 7872);
+  MINUTE_STEPS_BASE = base_prefs.getInt("minute", 18832);
+  
+  // Migrate old values (if they're in the old format without microstepping)
+  if (HOUR_STEPS_BASE < 1000) {  // Old format was ~492
+    send_message("Migrating old base steps format...");
+    HOUR_STEPS_BASE *= 16;
+    MINUTE_STEPS_BASE *= 16;
+    base_prefs.end();
+    base_prefs.begin("base-steps", false);
+    base_prefs.putInt("hour", HOUR_STEPS_BASE);
+    base_prefs.putInt("minute", MINUTE_STEPS_BASE);
+    send_message("Migrated: hour=%d, minute=%d", HOUR_STEPS_BASE, MINUTE_STEPS_BASE);
+  }
   base_prefs.end();
 
   clock_manager.set_logger(send_message);
@@ -224,6 +236,30 @@ void start_server() {
 
   server.on("/toggle-demo", HTTP_POST, [](AsyncWebServerRequest *request) {
     clock_manager.toggle_demo();
+    request->send_P(200, "text/plain", "OK");
+  });
+
+  server.on("/live-calibrate", HTTP_POST, [](AsyncWebServerRequest *request) {
+    if (request->hasParam("type", true) && request->hasParam("direction", true)) {
+      String type = request->getParam("type", true)->value();
+      int direction = request->getParam("direction", true)->value().toInt();
+      
+      bool is_hour = (type == "hour");
+      clock_manager.live_calibrate_step(is_hour, direction);
+      
+      request->send_P(200, "text/plain", "OK");
+    } else {
+      request->send_P(400, "text/plain", "Missing parameters");
+    }
+  });
+
+  server.on("/fast-forward-hours", HTTP_POST, [](AsyncWebServerRequest *request) {
+    clock_manager.request_fast_forward_hours();
+    request->send_P(200, "text/plain", "OK");
+  });
+
+  server.on("/fast-forward-minutes", HTTP_POST, [](AsyncWebServerRequest *request) {
+    clock_manager.request_fast_forward_minutes();
     request->send_P(200, "text/plain", "OK");
   });
 

@@ -498,6 +498,45 @@ const char CONFIG_HTML[] = R"rawliteral(
             </div>
 
             <div class="card">
+                <h2>Live Calibration</h2>
+                <p style="margin-bottom: 1.5rem; color: #6c757d; font-size: 0.95rem;">
+                    Adjust the current displayed digit. <strong>+</strong> moves forward immediately, <strong>-</strong> takes effect on next cycle.
+                </p>
+                <div class="form-group">
+                    <label>Hours</label>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <button type="button" class="btn" onclick="liveCalibrate('hour', -1)">- H</button>
+                        </div>
+                        <div class="form-group">
+                            <button type="button" class="btn" onclick="liveCalibrate('hour', 1)">+ H</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Minutes</label>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <button type="button" class="btn" onclick="liveCalibrate('minute', -1)">- M</button>
+                        </div>
+                        <div class="form-group">
+                            <button type="button" class="btn" onclick="liveCalibrate('minute', 1)">+ M</button>
+                        </div>
+                    </div>
+                </div>
+                <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid #e8eaed;">
+                <h3 style="font-size: 1rem; margin-bottom: 1rem;">Fast Forward</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <button type="button" class="btn" onclick="fastForward('hours')">Hours Cycle</button>
+                    </div>
+                    <div class="form-group">
+                        <button type="button" class="btn" onclick="fastForward('minutes')">Minutes Cycle</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
                 <h2>Stepper Offsets</h2>
                 <div id="offsets-container">
                     <h3>Hour Offsets</h3>
@@ -738,6 +777,39 @@ const char CONFIG_HTML[] = R"rawliteral(
                     }
                 });
         });
+
+        function liveCalibrate(type, direction) {
+            const formData = new FormData();
+            formData.append('type', type);
+            formData.append('direction', direction);
+            
+            fetch('/live-calibrate', {
+                method: 'POST',
+                body: formData
+            }).then(res => res.text())
+                .then(data => {
+                    console.log('Live calibrate:', data);
+                    // Refresh offsets to update the UI
+                    return fetch('/get-settings');
+                })
+                .then(response => response.json())
+                .then(data => {
+                    hourOffsets = data.offsets.hours;
+                    minuteOffsets = data.offsets.minutes;
+                    renderOffsets();
+                });
+        }
+
+        function fastForward(type) {
+            const endpoint = type === 'hours' ? '/fast-forward-hours' : '/fast-forward-minutes';
+            
+            fetch(endpoint, {
+                method: 'POST'
+            }).then(res => res.text())
+                .then(data => {
+                    console.log('Fast forward:', data);
+                });
+        }
 
         if (!!window.EventSource) {
             var source = new EventSource('/events');

@@ -35,11 +35,12 @@ int StepperDriver::step(bool hour, bool minute, int hour_offset, int minute_offs
 
   delayMicroseconds(2000);
 
-  int hour_steps = hour ? (HOUR_STEPS_BASE + hour_offset) * MICROSTEPPING_MULTIPLIER : 0;
-  int minute_steps = minute ? (MINUTE_STEPS_BASE + minute_offset) * MICROSTEPPING_MULTIPLIER : 0;
+  // Steps are now already in microsteps (no multiplier needed)
+  int hour_steps = hour ? (HOUR_STEPS_BASE + hour_offset) : 0;
+  int minute_steps = minute ? (MINUTE_STEPS_BASE + minute_offset) : 0;
 
-  int log_minute_steps = (minute ? MINUTE_STEPS_BASE + minute_offset : 0);
-  int log_hour_steps = (hour ? HOUR_STEPS_BASE + hour_offset : 0);
+  int log_minute_steps = minute_steps;
+  int log_hour_steps = hour_steps;
 
   int offset = 0;
   while(hour_steps > 0 || minute_steps > 0) {
@@ -78,6 +79,37 @@ int StepperDriver::step(bool hour, bool minute, int hour_offset, int minute_offs
   return 0;
 }
 
+void StepperDriver::step_hour(int steps) {
+  if (steps == 0) return;
+  
+  digitalWrite(PIN_HOUR_SLEEP, LOW);
+  delayMicroseconds(2000);
+  
+  for (int i = 0; i < steps; i++) {
+    digitalWrite(PIN_HOUR_STEP, HIGH);
+    delayMicroseconds(5);
+    digitalWrite(PIN_HOUR_STEP, LOW);
+    delayMicroseconds(4 * 12 * STEP_INTERVAL);  // Match calibrate_hour timing
+  }
+  
+  digitalWrite(PIN_HOUR_SLEEP, HIGH);
+}
+
+void StepperDriver::step_minute(int steps) {
+  if (steps == 0) return;
+  
+  digitalWrite(PIN_MINUTE_SLEEP, LOW);
+  delayMicroseconds(2000);
+  
+  for (int i = 0; i < steps; i++) {
+    digitalWrite(PIN_MINUTE_STEP, HIGH);
+    delayMicroseconds(5);
+    digitalWrite(PIN_MINUTE_STEP, LOW);
+    delayMicroseconds(4 * 5 * STEP_INTERVAL);  // Match calibrate_minute timing
+  }
+  
+  digitalWrite(PIN_MINUTE_SLEEP, HIGH);
+}
 
 int StepperDriver::calibrate_hour(bool &cont) {
   digitalWrite(PIN_HOUR_SLEEP, LOW);
@@ -95,7 +127,7 @@ int StepperDriver::calibrate_hour(bool &cont) {
 
   digitalWrite(PIN_HOUR_SLEEP, HIGH);
 
-  return steps / MICROSTEPPING_MULTIPLIER;
+  return steps;  // Return actual microsteps
 }
 
 int StepperDriver::calibrate_minute(bool &cont) {
@@ -114,5 +146,5 @@ int StepperDriver::calibrate_minute(bool &cont) {
 
   digitalWrite(PIN_MINUTE_SLEEP, HIGH);
 
-  return steps / MICROSTEPPING_MULTIPLIER;
+  return steps;  // Return actual microsteps
 }
