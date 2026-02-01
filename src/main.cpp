@@ -66,17 +66,7 @@ void setup() {
   HOUR_STEPS_BASE = base_prefs.getInt("hour", 7872);
   MINUTE_STEPS_BASE = base_prefs.getInt("minute", 18832);
   
-  // Migrate old values (if they're in the old format without microstepping)
-  if (HOUR_STEPS_BASE < 1000) {  // Old format was ~492
-    send_message("Migrating old base steps format...");
-    HOUR_STEPS_BASE *= 16;
-    MINUTE_STEPS_BASE *= 16;
-    base_prefs.end();
-    base_prefs.begin("base-steps", false);
-    base_prefs.putInt("hour", HOUR_STEPS_BASE);
-    base_prefs.putInt("minute", MINUTE_STEPS_BASE);
-    send_message("Migrated: hour=%d, minute=%d", HOUR_STEPS_BASE, MINUTE_STEPS_BASE);
-  }
+
   base_prefs.end();
 
   clock_manager.set_logger(send_message);
@@ -105,6 +95,9 @@ void setup() {
 void loop() {
 
   clock_manager.tick();
+#if ENABLE_WIFI == 1
+  wifi_manager.loop();
+#endif
 
   delay(1000);
 }
@@ -234,10 +227,6 @@ void start_server() {
     request->send_P(200, "text/plain", "OK");
   });
 
-  server.on("/toggle-demo", HTTP_POST, [](AsyncWebServerRequest *request) {
-    clock_manager.toggle_demo();
-    request->send_P(200, "text/plain", "OK");
-  });
 
   server.on("/live-calibrate", HTTP_POST, [](AsyncWebServerRequest *request) {
     if (request->hasParam("type", true) && request->hasParam("direction", true)) {
@@ -369,6 +358,28 @@ void start_server() {
     request->send_P(200, "text/plain", "OK");
   });
 
+  server.on("/reset", HTTP_POST, [](AsyncWebServerRequest *request) {
+    request->send_P(200, "text/plain", "OK");
+    delay(100);
+    ESP.restart();
+  });
+
+  server.on("/factory-reset", HTTP_POST, [](AsyncWebServerRequest *request) {
+    request->send_P(200, "text/plain", "OK");
+    
+    // Clear all preferences
+    const char* namespaces[] = {"wifi", "time", "base-steps", "offsets", "time-zone"};
+    for (const char* ns : namespaces) {
+      Preferences p;
+      p.begin(ns, false);
+      p.clear();
+      p.end();
+    }
+    
+    delay(100);
+    ESP.restart();
+  });
+
   events.onConnect([](AsyncEventSourceClient *client) {
     if (client->lastId()) {
       Serial.printf("Client reconnected. Last message ID that it got is: %u\n", client->lastId());
@@ -411,9 +422,6 @@ void start_buttons() {
     if (counter == 2) {
       send_message("Left double click");
       clock_manager.decrement_hour();
-    } else if (counter == 3) {
-      send_message("Left triple click");
-      clock_manager.toggle_demo();
     }
   });
 

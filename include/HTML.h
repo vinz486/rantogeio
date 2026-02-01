@@ -366,6 +366,95 @@ const char CONFIG_HTML[] = R"rawliteral(
     <div class="content">
         <div class="cards">
 
+            <div class="card log">
+                <h2>Messages</h2>
+                <pre id="log-messages"></pre>
+            </div>
+
+            <div class="card">
+                <h2>Calibrate</h2>
+                <form>
+                    <div class="form-row">
+                        <div class="form-group">
+                             <button type="submit" class="btn" formaction="/calibrate-hour" formmethod="post">Hour</button>
+                        </div>
+                        <div class="form-group">
+                            <button type="submit" class="btn" formaction="/calibrate-minute" formmethod="post">Minute</button>
+                        </div>
+                        <div class="form-group">
+                            <button type="submit" class="btn" formaction="/calibrate-end" formmethod="post">Stop</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+
+            <div class="card">
+                <h2>Live Calibration</h2>
+                <p style="margin-bottom: 1.5rem; color: #6c757d; font-size: 0.95rem;">
+                    Adjust the current displayed digit. <strong>+</strong> moves forward immediately, <strong>-</strong> takes effect on next cycle.
+                </p>
+                <div class="form-group">
+                    <label>Hours</label>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <button type="button" class="btn" onclick="liveCalibrate('hour', -1)">- H</button>
+                        </div>
+                        <div class="form-group">
+                            <button type="button" class="btn" onclick="liveCalibrate('hour', 1)">+ H</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Minutes</label>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <button type="button" class="btn" onclick="liveCalibrate('minute', -1)">- M</button>
+                        </div>
+                        <div class="form-group">
+                            <button type="button" class="btn" onclick="liveCalibrate('minute', 1)">+ M</button>
+                        </div>
+                    </div>
+                </div>
+                <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid #e8eaed;">
+                <h3 style="font-size: 1rem; margin-bottom: 1rem;">Fast Forward</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <button type="button" class="btn" onclick="fastForward('hours')">Hours Cycle</button>
+                    </div>
+                    <div class="form-group">
+                        <button type="button" class="btn" onclick="fastForward('minutes')">Minutes Cycle</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Stepper Offsets</h2>
+                <div id="offsets-container">
+                    <h3>Hour Offsets</h3>
+                    <div class="form-group">
+                        <label for="base-hour">Base Steps Hour:</label>
+                        <input type="number" id="base-hour" placeholder="492" />
+                    </div>
+                    <ul id="hour-offsets-list"></ul>
+                    <button type="button" class="btn" onclick="showOffsetModal('hour')">Add Hour Offset</button>
+
+                    <h3>Minute Offsets</h3>
+                    <div class="form-group">
+                        <label for="base-minute">Base Steps Minute:</label>
+                        <input type="number" id="base-minute" placeholder="1177" />
+                    </div>
+                    <ul id="minute-offsets-list"></ul>
+                    <button type="button" class="btn" onclick="showOffsetModal('minute')">Add Minute Offset</button>
+
+                    <hr style="margin: 2rem 0; border: none; border-top: 1px solid #e8eaed;">
+
+                    <div class="form-group" style="margin-top: 1rem;">
+                        <button type="button" id="save-offsets-btn" class="btn" onclick="saveAllOffsets()">Save All Offsets</button>
+                    </div>
+                </div>
+            </div>
+
             <div class="card">
                 <h2>Displayed Time</h2>
                 <form action="/set-displayed" method="post">
@@ -472,100 +561,21 @@ const char CONFIG_HTML[] = R"rawliteral(
             </div>
 
             <div class="card">
-                <h2>Calibrate</h2>
-                <form>
-                    <div class="form-row">
-                        <div class="form-group">
-                             <button type="submit" class="btn" formaction="/calibrate-hour" formmethod="post">Hour</button>
-                        </div>
-                        <div class="form-group">
-                            <button type="submit" class="btn" formaction="/calibrate-minute" formmethod="post">Minute</button>
-                        </div>
-                        <div class="form-group">
-                            <button type="submit" class="btn" formaction="/calibrate-end" formmethod="post">Stop</button>
-                        </div>
-                    </div>
-                </form>
-            </div>
-
-            <div class="card">
-                <h2>Demo</h2>
-                <form action="/toggle-demo" method="post">
-                    <div class="form-group">
-                        <button type="submit" class="btn">Toggle</button>
-                    </div>
-                </form>
-            </div>
-
-            <div class="card">
-                <h2>Live Calibration</h2>
-                <p style="margin-bottom: 1.5rem; color: #6c757d; font-size: 0.95rem;">
-                    Adjust the current displayed digit. <strong>+</strong> moves forward immediately, <strong>-</strong> takes effect on next cycle.
-                </p>
-                <div class="form-group">
-                    <label>Hours</label>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <button type="button" class="btn" onclick="liveCalibrate('hour', -1)">- H</button>
-                        </div>
-                        <div class="form-group">
-                            <button type="button" class="btn" onclick="liveCalibrate('hour', 1)">+ H</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Minutes</label>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <button type="button" class="btn" onclick="liveCalibrate('minute', -1)">- M</button>
-                        </div>
-                        <div class="form-group">
-                            <button type="button" class="btn" onclick="liveCalibrate('minute', 1)">+ M</button>
-                        </div>
-                    </div>
-                </div>
-                <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid #e8eaed;">
-                <h3 style="font-size: 1rem; margin-bottom: 1rem;">Fast Forward</h3>
+                <h2>System</h2>
                 <div class="form-row">
                     <div class="form-group">
-                        <button type="button" class="btn" onclick="fastForward('hours')">Hours Cycle</button>
-                    </div>
-                    <div class="form-group">
-                        <button type="button" class="btn" onclick="fastForward('minutes')">Minutes Cycle</button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card">
-                <h2>Stepper Offsets</h2>
-                <div id="offsets-container">
-                    <h3>Hour Offsets</h3>
-                    <div class="form-group">
-                        <label for="base-hour">Base Steps Hour:</label>
-                        <input type="number" id="base-hour" placeholder="492" />
-                    </div>
-                    <ul id="hour-offsets-list"></ul>
-                    <button type="button" class="btn" onclick="showOffsetModal('hour')">Add Hour Offset</button>
-
-                    <h3>Minute Offsets</h3>
-                    <div class="form-group">
-                        <label for="base-minute">Base Steps Minute:</label>
-                        <input type="number" id="base-minute" placeholder="1177" />
-                    </div>
-                    <ul id="minute-offsets-list"></ul>
-                    <button type="button" class="btn" onclick="showOffsetModal('minute')">Add Minute Offset</button>
-
-                    <hr style="margin: 2rem 0; border: none; border-top: 1px solid #e8eaed;">
-
-                    <div class="form-group" style="margin-top: 1rem;">
-                        <button type="button" id="save-offsets-btn" class="btn" onclick="saveAllOffsets()">Save All Offsets</button>
+                        <form action="/reset" method="post" onsubmit="return confirm('Are you sure you want to reboot the device?');">
+                            <button type="submit" class="btn">Reboot Device</button>
+                        </form>
                     </div>
                 </div>
-            </div>
-
-            <div class="card log">
-                <h2>Messages</h2>
-                <pre id="log-messages"></pre>
+                <div class="form-row">
+                    <div class="form-group">
+                        <form action="/factory-reset" method="post" onsubmit="return confirm('WARNING: This will erase ALL settings including Wi-Fi credentials. Are you sure?');">
+                            <button type="submit" class="btn btn-unsaved">Factory Reset</button>
+                        </form>
+                    </div>
+                </div>
             </div>
 
         </div>

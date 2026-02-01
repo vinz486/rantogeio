@@ -42,7 +42,7 @@ void WifiManager::begin() {
       Serial.println(WiFi.localIP());
 
       WiFi.onEvent(on_wifi_event);
-
+      _try_reconnect = true; // Enable active reconnection check
       return;
     }
   }
@@ -56,6 +56,21 @@ void WifiManager::begin() {
   }
   else {
     Serial.println("AP failed");
+  }
+}
+
+void WifiManager::loop() {
+  if (!_try_reconnect) return;
+
+  unsigned long now = millis();
+  if (now - _last_wifi_check > 30000) { // Check every 30 seconds
+    _last_wifi_check = now;
+    
+    if (WiFi.status() != WL_CONNECTED) {
+      Serial.println("WiFi disconnection detected by active check. Reconnecting...");
+      WiFi.disconnect();
+      WiFi.reconnect();
+    }
   }
 }
 

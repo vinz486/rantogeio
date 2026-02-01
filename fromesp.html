@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="it">
 
@@ -12,11 +11,12 @@
         * {
             box-sizing: border-box;
         }
-        
+
         html {
-            font-size: 100; /* Previene lo zoom del testo su iOS */
+            font-size: 100;
+            /* Previene lo zoom del testo su iOS */
         }
-        
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f5f5f5;
@@ -26,7 +26,7 @@
             color: #333;
             font-size: 1rem;
         }
-        
+
         /* Navigation */
         .topnav {
             background: linear-gradient(135deg, #667eea 0);
@@ -35,58 +35,58 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
-        
+
         .topnav h1 {
             margin: 0;
             font-size: 1.8rem;
             font-weight: 600;
         }
-        
+
         .topnav a {
             color: white;
             text-decoration: none;
             font-size: 1rem;
             padding: 0.5rem 1rem;
-            border: 1px solid rgba(255,255,255,0.3);
+            border: 1px solid rgba(255, 255, 255, 0.3);
             border-radius: 4px;
             transition: all 0.3s ease;
         }
-        
+
         .topnav a:hover {
-            background-color: rgba(255,255,255,0.1);
-            border-color: rgba(255,255,255,0.5);
+            background-color: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.5);
         }
-        
+
         /* Content Layout */
         .content {
             padding: 2rem;
             max-width: 1400px;
             margin: 0 auto;
         }
-        
+
         .cards {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
             gap: 1.5rem;
         }
-        
+
         /* Card Styling */
         .card {
             background: white;
             border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
             padding: 2rem;
             transition: transform 0.3s ease, box-shadow 0.3s ease;
             border: 1px solid #e1e5e9;
         }
-        
+
         .card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
         }
-        
+
         .card h2 {
             margin: 0 0 1.5rem 0;
             color: #2c3e50;
@@ -95,19 +95,19 @@
             border-bottom: 2px solid #e8eaed;
             padding-bottom: 0.75rem;
         }
-        
+
         .card h3 {
             margin: 1.5rem 0 1rem 0;
             color: #34495e;
             font-size: 1.1rem;
             font-weight: 500;
         }
-        
+
         /* Form Elements */
         .form-group {
             margin-bottom: 1.5rem;
         }
-        
+
         .form-group label {
             display: block;
             margin-bottom: 0.5rem;
@@ -115,7 +115,7 @@
             color: #374151;
             font-size: 1.1rem;
         }
-        
+
         /* Input Fields */
         .form-group input[type="text"],
         .form-group input[type="password"],
@@ -131,14 +131,14 @@
             border-radius: 6px;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
             text-align: center;
             text-decoration: none;
         }
 
         .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
             color: white;
         }
 
@@ -163,17 +163,22 @@
         }
 
         @keyframes pulse {
-            0 { box-shadow: 0 0 0 10px rgba(229, 57, 53, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(229, 57, 53, 0); }
+            0 {
+                box-shadow: 0 0 0 10px rgba(229, 57, 53, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(229, 57, 53, 0);
+            }
         }
-        
+
         /* Radio Buttons */
         .form-group input[type="radio"] {
             width: auto;
             margin-right: 0.8rem;
             transform: scale(1.5);
         }
-        
+
         .form-group label:has(input[type="radio"]) {
             display: flex;
             align-items: center;
@@ -184,31 +189,31 @@
             border-radius: 4px;
             transition: background-color 0.2s ease;
         }
-        
+
         .form-group label:has(input[type="radio"]):hover {
             background-color: #f8f9fa;
         }
-        
+
         /* Form Rows */
         .form-row {
             display: flex;
             gap: 1rem;
             margin-bottom: 1.5rem;
         }
-        
+
         .form-row .form-group {
             flex: 1;
             margin-bottom: 0;
             min-width: 0;
         }
-        
+
         /* Lists */
         ul {
             list-style: none;
             padding: 0;
             margin: 0;
         }
-        
+
         .offset-item {
             display: flex;
             justify-content: space-between;
@@ -219,28 +224,30 @@
             border-radius: 6px;
             border: 1px solid #e9ecef;
         }
-        
-        .offset-item > div:first-child {
+
+        .offset-item>div:first-child {
             display: flex;
             gap: 1rem;
             align-items: center;
         }
+
         .offset-value {
             font-family: monospace;
             white-space: pre;
             text-align: right;
             min-width: 4ch;
         }
+
         .btn-delete {
             margin-left: 0.5rem;
         }
-        
-        
+
+
         /* Log Card */
         .log {
             grid-column: 1 / -1;
         }
-        
+
         #log-messages {
             background-color: #1e1e1e;
             color: #e0e0e0;
@@ -253,7 +260,7 @@
             white-space: pre-wrap;
             margin: 0;
         }
-        
+
         /* Modal */
         #offset-modal {
             display: none;
@@ -265,14 +272,14 @@
             background-color: rgba(0, 0, 0, 0.6);
             z-index: 1000;
         }
-        
+
         #offset-modal.show {
             display: flex;
             justify-content: center;
             align-items: center;
         }
-        
-        #offset-modal > div.modal-content {
+
+        #offset-modal>div.modal-content {
             background: white;
             padding: 2rem;
             border-radius: 12px;
@@ -282,13 +289,13 @@
             overflow-y: auto;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
         }
-        
-        #offset-modal > div.modal-content h2 {
+
+        #offset-modal>div.modal-content h2 {
             margin-top: 0;
             margin-bottom: 1.5rem;
             color: #2c3e50;
         }
-        
+
         /* Responsive Design */
         @media (max-width: 768px) {
             .topnav {
@@ -296,20 +303,20 @@
                 gap: 1rem;
                 text-align: center;
             }
-            
+
             .content {
                 padding: 1rem;
             }
-            
+
             .cards {
                 grid-template-columns: 1fr;
                 gap: 1rem;
             }
-            
+
             .card {
                 padding: 1.5rem;
             }
-            
+
             .form-row {
                 flex-direction: column;
                 gap: 1rem;
@@ -321,15 +328,15 @@
                 gap: 1rem;
             }
         }
-        
+
         @media (max-width: 480px) {
             .offset-item {
                 flex-direction: column;
                 gap: 1rem;
                 align-items: stretch;
             }
-            
-            .offset-item > div {
+
+            .offset-item>div {
                 display: flex;
                 gap: 0.5rem;
             }
@@ -344,6 +351,99 @@
     </div>
     <div class="content">
         <div class="cards">
+
+            <div class="card log">
+                <h2>Messages</h2>
+                <pre id="log-messages"></pre>
+            </div>
+
+            <div class="card">
+                <h2>Calibrate</h2>
+                <form>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <button type="submit" class="btn" formaction="/calibrate-hour"
+                                formmethod="post">Hour</button>
+                        </div>
+                        <div class="form-group">
+                            <button type="submit" class="btn" formaction="/calibrate-minute"
+                                formmethod="post">Minute</button>
+                        </div>
+                        <div class="form-group">
+                            <button type="submit" class="btn" formaction="/calibrate-end"
+                                formmethod="post">Stop</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Live Calibration</h2>
+                <p style="margin-bottom: 1.5rem; color: #6c757d; font-size: 0.95rem;">
+                    Adjust the current displayed digit. <strong>+</strong> moves forward immediately, <strong>-</strong>
+                    takes effect on next cycle.
+                </p>
+                <div class="form-group">
+                    <label>Hours</label>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <button type="button" class="btn" onclick="liveCalibrate('hour', -1)">- H</button>
+                        </div>
+                        <div class="form-group">
+                            <button type="button" class="btn" onclick="liveCalibrate('hour', 1)">+ H</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Minutes</label>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <button type="button" class="btn" onclick="liveCalibrate('minute', -1)">- M</button>
+                        </div>
+                        <div class="form-group">
+                            <button type="button" class="btn" onclick="liveCalibrate('minute', 1)">+ M</button>
+                        </div>
+                    </div>
+                </div>
+                <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid #e8eaed;">
+                <h3 style="font-size: 1rem; margin-bottom: 1rem;">Fast Forward</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <button type="button" class="btn" onclick="fastForward('hours')">Hours Cycle</button>
+                    </div>
+                    <div class="form-group">
+                        <button type="button" class="btn" onclick="fastForward('minutes')">Minutes Cycle</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Stepper Offsets</h2>
+                <div id="offsets-container">
+                    <h3>Hour Offsets</h3>
+                    <div class="form-group">
+                        <label for="base-hour">Base Steps Hour:</label>
+                        <input type="number" id="base-hour" placeholder="492" />
+                    </div>
+                    <ul id="hour-offsets-list"></ul>
+                    <button type="button" class="btn" onclick="showOffsetModal('hour')">Add Hour Offset</button>
+
+                    <h3>Minute Offsets</h3>
+                    <div class="form-group">
+                        <label for="base-minute">Base Steps Minute:</label>
+                        <input type="number" id="base-minute" placeholder="1177" />
+                    </div>
+                    <ul id="minute-offsets-list"></ul>
+                    <button type="button" class="btn" onclick="showOffsetModal('minute')">Add Minute Offset</button>
+
+                    <hr style="margin: 2rem 0; border: none; border-top: 1px solid #e8eaed;">
+
+                    <div class="form-group" style="margin-top: 1rem;">
+                        <button type="button" id="save-offsets-btn" class="btn" onclick="saveAllOffsets()">Save All
+                            Offsets</button>
+                    </div>
+                </div>
+            </div>
 
             <div class="card">
                 <h2>Displayed Time</h2>
@@ -439,57 +539,36 @@
                         <label><input type="radio" name="casio" value="day" id="casio-day"> From 08 to 00</label>
                     </div>
                     <div class="form-group">
+                        <label style="flex-direction: row; align-items: center; gap: 1rem;">
+                            <input type="checkbox" name="calibration_hint" id="calibration_hint"
+                                style="transform: scale(1.5);">
+                            Calibration hint
+                        </label>
+                    </div>
+                    <div class="form-group">
                         <button type="submit" class="btn">Save</button>
                     </div>
                 </form>
             </div>
 
             <div class="card">
-                <h2>Calibrate</h2>
-                <form>
-                    <div class="form-row">
-                        <div class="form-group">
-                             <button type="submit" class="btn" formaction="/calibrate-hour" formmethod="post">Hour</button>
-                        </div>
-                        <div class="form-group">
-                            <button type="submit" class="btn" formaction="/calibrate-minute" formmethod="post">Minute</button>
-                        </div>
-                        <div class="form-group">
-                            <button type="submit" class="btn" formaction="/calibrate-end" formmethod="post">Stop</button>
-                        </div>
-                    </div>
-                </form>
-            </div>
-
-            <div class="card">
-                <h2>Demo</h2>
-                <form action="/toggle-demo" method="post">
+                <h2>System</h2>
+                <div class="form-row">
                     <div class="form-group">
-                        <button type="submit" class="btn">Toggle</button>
-                    </div>
-                </form>
-            </div>
-
-            <div class="card">
-                <h2>Stepper Offsets</h2>
-                <div id="offsets-container">
-                    <h3>Hour Offsets</h3>
-                    <ul id="hour-offsets-list"></ul>
-                    <button type="button" class="btn" onclick="showOffsetModal('hour')">Add Hour Offset</button>
-
-                    <h3>Minute Offsets</h3>
-                    <ul id="minute-offsets-list"></ul>
-                    <button type="button" class="btn" onclick="showOffsetModal('minute')">Add Minute Offset</button>
-
-                    <div class="form-group" style="margin-top: 1rem;">
-                        <button type="button" id="save-offsets-btn" class="btn" onclick="saveAllOffsets()">Save All Offsets</button>
+                        <form action="/reset" method="post"
+                            onsubmit="return confirm('Are you sure you want to reboot the device?');">
+                            <button type="submit" class="btn">Reboot Device</button>
+                        </form>
                     </div>
                 </div>
-            </div>
-
-            <div class="card log">
-                <h2>Messages</h2>
-                <pre id="log-messages"></pre>
+                <div class="form-row">
+                    <div class="form-group">
+                        <form action="/factory-reset" method="post"
+                            onsubmit="return confirm('WARNING: This will erase ALL settings including Wi-Fi credentials. Are you sure?');">
+                            <button type="submit" class="btn btn-unsaved">Factory Reset</button>
+                        </form>
+                    </div>
+                </div>
             </div>
 
         </div>
@@ -546,10 +625,10 @@
                     li.className = 'offset-item';
                     const signedOffset = (offset > 0 ? '+' : '') + offset;
                     li.innerHTML = `<div><span class="offset-label">H ${index.toString().padStart(2, ' ')}</span><span class="offset-value">${signedOffset}</span></div>` +
-                                 '<div>' +
-                                 `<button class="btn btn-small" onclick="showOffsetModal('hour', ${index}, ${offset})">Edit</button>` +
-                                 `<button class="btn btn-small btn-delete" onclick="hourOffsets[${index}] = 0; renderOffsets(); markUnsaved();">Delete</button>` +
-                                 '</div>';
+                        '<div>' +
+                        `<button class="btn btn-small" onclick="showOffsetModal('hour', ${index}, ${offset})">Edit</button>` +
+                        `<button class="btn btn-small btn-delete" onclick="hourOffsets[${index}] = 0; renderOffsets(); markUnsaved();">Delete</button>` +
+                        '</div>';
                     hourList.appendChild(li);
                 }
             });
@@ -562,10 +641,10 @@
                     li.className = 'offset-item';
                     const signedOffset = (offset > 0 ? '+' : '') + offset;
                     li.innerHTML = `<div><span class="offset-label">M ${index.toString().padStart(2, ' ')}</span><span class="offset-value">${signedOffset}</span></div>` +
-                                 '<div>' +
-                                 `<button class="btn btn-small" onclick="showOffsetModal('minute', ${index}, ${offset})">Edit</button>` +
-                                 `<button class="btn btn-small btn-delete" onclick="minuteOffsets[${index}] = 0; renderOffsets(); markUnsaved();">Delete</button>` +
-                                 '</div>';
+                        '<div>' +
+                        `<button class="btn btn-small" onclick="showOffsetModal('minute', ${index}, ${offset})">Edit</button>` +
+                        `<button class="btn btn-small btn-delete" onclick="minuteOffsets[${index}] = 0; renderOffsets(); markUnsaved();">Delete</button>` +
+                        '</div>';
                     minuteList.appendChild(li);
                 }
             });
@@ -575,11 +654,11 @@
             currentEdit = { type, index };
             const modal = document.getElementById('offset-modal');
             document.getElementById('modal-title').textContent = (index === -1 ? 'Add ' : 'Edit ') + type + ' Offset';
-            
+
             const indexSelect = document.getElementById('modal-index');
             indexSelect.innerHTML = '';
             const max = type === 'hour' ? 24 : 60;
-            for(let i=0; i<max; i++){
+            for (let i = 0; i < max; i++) {
                 const option = document.createElement('option');
                 option.value = i;
                 option.textContent = i;
@@ -617,10 +696,10 @@
 
         function saveAllOffsets() {
             const formData = new FormData();
-            for(let i=0; i<24; i++) {
+            for (let i = 0; i < 24; i++) {
                 formData.append('h' + i, hourOffsets[i]);
             }
-            for(let i=0; i<60; i++) {
+            for (let i = 0; i < 60; i++) {
                 formData.append('m' + i, minuteOffsets[i]);
             }
 
@@ -672,10 +751,10 @@
                     renderOffsets();
 
                     // Other settings
-                    if(data.wifi_ssid) document.getElementById('wifi-ssid').value = data.wifi_ssid;
-                    if(data.tz_name) document.getElementById('tz-name').value = data.tz_name;
-                    if(data.casio_mode) document.getElementById('casio-' + data.casio_mode).checked = true;
-                    if(data.date) {
+                    if (data.wifi_ssid) document.getElementById('wifi-ssid').value = data.wifi_ssid;
+                    if (data.tz_name) document.getElementById('tz-name').value = data.tz_name;
+                    if (data.casio_mode) document.getElementById('casio-' + data.casio_mode).checked = true;
+                    if (data.date) {
                         document.getElementById('date-d').value = data.date.day;
                         document.getElementById('date-m').value = data.date.month;
                         document.getElementById('date-y').value = data.date.year;

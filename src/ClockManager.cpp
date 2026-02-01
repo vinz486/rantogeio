@@ -55,18 +55,6 @@ void ClockManager::tick() {
     return;
   }
 
-  if (_state == DEMO) {
-    _stepper.step(true, false);
-    delay(500);
-    _stepper.step(true, true);
-    delay(500);
-    _stepper.step(false, true);
-
-    adjust_displayed_hour(2);
-    adjust_displayed_minute(2);
-
-    return;
-  }
 
   if (_state == SET_MINUTES) {
     set_minutes();
@@ -114,16 +102,6 @@ void ClockManager::tick() {
   sync_to_current_time();
 }
 
-void ClockManager::toggle_demo() {
-  _calibrating = false;
-  if (_state == DEMO) {
-    (*_logger)("End demo");
-    _state = RUN;
-  } else {
-    (*_logger)("Start demo");
-    _state = DEMO;
-  }
-}
 
 void ClockManager::set_displayed_time(int hour, int minute) {
   _displayedHour = hour;

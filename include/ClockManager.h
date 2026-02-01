@@ -25,7 +25,6 @@ public:
   void set_current_time(int hour, int minute, int second);
   void set_current_date(int day, int month, int year);
   void set_displayed_time_to_current();
-  void toggle_demo();
   void set_casio(String casio, bool calibration_hint);
   void save_offsets(int *hour_offsets, int *minute_offsets);
 
@@ -88,7 +87,6 @@ private:
   enum state_t { RUN,
                  CALIBRATE_HOUR,
                  CALIBRATE_MINUTE,
-                 DEMO,
                  SET_MINUTES,
                  FAST_FORWARD_HOURS,
                  FAST_FORWARD_MINUTES };
