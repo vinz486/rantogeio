@@ -26,6 +26,8 @@
 // Global variables for configurable base steps (in microsteps)
 int HOUR_STEPS_BASE = 7872;    // Default value (492 * 16 microstepping)
 int MINUTE_STEPS_BASE = 18832; // Default value (1177 * 16 microstepping)
+int HOUR_TARGET_X100 = 787200; // 2 decimal fixed point (e.g. 7872.25 => 787225)
+int MINUTE_TARGET_X100 = 1883200; // 2 decimal fixed point (e.g. 18874.50 => 1887450)
 
 ClockManager clock_manager;
 TimeZoneManager time_zone_manager;
@@ -65,6 +67,8 @@ void setup() {
   base_prefs.begin("base-steps", true);
   HOUR_STEPS_BASE = base_prefs.getInt("hour", 7872);
   MINUTE_STEPS_BASE = base_prefs.getInt("minute", 18832);
+  HOUR_TARGET_X100 = base_prefs.getInt("hour_target_x100", HOUR_STEPS_BASE * 100);
+  MINUTE_TARGET_X100 = base_prefs.getInt("minute_target_x100", MINUTE_STEPS_BASE * 100);
   
 
   base_prefs.end();
@@ -287,7 +291,9 @@ void start_server() {
     // Base steps
     response += "\"base_steps\":{";
     response += "\"hour\":" + String(HOUR_STEPS_BASE) + ",";
-    response += "\"minute\":" + String(MINUTE_STEPS_BASE);
+    response += "\"hour_target_x100\":" + String(HOUR_TARGET_X100) + ",";
+    response += "\"minute\":" + String(MINUTE_STEPS_BASE) + ",";
+    response += "\"minute_target_x100\":" + String(MINUTE_TARGET_X100);
     response += "},";
 
     // Offsets
@@ -320,17 +326,33 @@ void start_server() {
     // Handle base steps if provided
     if (request->hasParam("base_hour", true)) {
       HOUR_STEPS_BASE = request->getParam("base_hour", true)->value().toInt();
+      HOUR_TARGET_X100 = HOUR_STEPS_BASE * 100;
     }
     if (request->hasParam("base_minute", true)) {
       MINUTE_STEPS_BASE = request->getParam("base_minute", true)->value().toInt();
+      MINUTE_TARGET_X100 = MINUTE_STEPS_BASE * 100;
     }
 
-    // Save base steps to preferences
-    if (request->hasParam("base_hour", true) || request->hasParam("base_minute", true)) {
+    if (request->hasParam("minute_target", true)) {
+      float minute_target = request->getParam("minute_target", true)->value().toFloat();
+      MINUTE_TARGET_X100 = (int)(minute_target * 100.0f + 0.5f);
+      MINUTE_STEPS_BASE = MINUTE_TARGET_X100 / 100;
+    }
+
+    if (request->hasParam("hour_target", true)) {
+      float hour_target = request->getParam("hour_target", true)->value().toFloat();
+      HOUR_TARGET_X100 = (int)(hour_target * 100.0f + 0.5f);
+      HOUR_STEPS_BASE = HOUR_TARGET_X100 / 100;
+    }
+
+    // Save base/target minute steps to preferences
+    if (request->hasParam("base_hour", true) || request->hasParam("base_minute", true) || request->hasParam("hour_target", true) || request->hasParam("minute_target", true)) {
       Preferences base_prefs;
       base_prefs.begin("base-steps", false);
       base_prefs.putInt("hour", HOUR_STEPS_BASE);
+      base_prefs.putInt("hour_target_x100", HOUR_TARGET_X100);
       base_prefs.putInt("minute", MINUTE_STEPS_BASE);
+      base_prefs.putInt("minute_target_x100", MINUTE_TARGET_X100);
       base_prefs.end();
     }
 

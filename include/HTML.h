@@ -433,16 +433,16 @@ const char CONFIG_HTML[] = R"rawliteral(
                 <div id="offsets-container">
                     <h3>Hour Offsets</h3>
                     <div class="form-group">
-                        <label for="base-hour">Base Steps Hour:</label>
-                        <input type="number" id="base-hour" placeholder="492" />
+                        <label for="hour-target">Hour Target (2 decimali):</label>
+                        <input type="number" id="hour-target" step="0.01" min="0" placeholder="7872.00" />
                     </div>
                     <ul id="hour-offsets-list"></ul>
                     <button type="button" class="btn" onclick="showOffsetModal('hour')">Add Hour Offset</button>
 
                     <h3>Minute Offsets</h3>
                     <div class="form-group">
-                        <label for="base-minute">Base Steps Minute:</label>
-                        <input type="number" id="base-minute" placeholder="1177" />
+                        <label for="minute-target">Minute Target (2 decimali):</label>
+                        <input type="number" id="minute-target" step="0.01" min="0" placeholder="18874.50" />
                     </div>
                     <ul id="minute-offsets-list"></ul>
                     <button type="button" class="btn" onclick="showOffsetModal('minute')">Add Minute Offset</button>
@@ -704,11 +704,11 @@ const char CONFIG_HTML[] = R"rawliteral(
         function saveAllOffsets() {
             const formData = new FormData();
             
-            // Add base steps
-            const baseHour = document.getElementById('base-hour').value;
-            const baseMinute = document.getElementById('base-minute').value;
-            if (baseHour !== '') formData.append('base_hour', baseHour);
-            if (baseMinute !== '') formData.append('base_minute', baseMinute);
+            // Add targets
+            const hourTarget = document.getElementById('hour-target').value;
+            const minuteTarget = document.getElementById('minute-target').value;
+            if (hourTarget !== '') formData.append('hour_target', hourTarget);
+            if (minuteTarget !== '') formData.append('minute_target', minuteTarget);
             
             // Add offsets
             for(let i=0; i<24; i++) {
@@ -731,9 +731,9 @@ const char CONFIG_HTML[] = R"rawliteral(
         }
 
         document.addEventListener('DOMContentLoaded', function () {
-            // Add listeners for base steps to mark as unsaved
-            document.getElementById('base-hour').addEventListener('input', markUnsaved);
-            document.getElementById('base-minute').addEventListener('input', markUnsaved);
+            // Add listeners for targets to mark as unsaved
+            document.getElementById('hour-target').addEventListener('input', markUnsaved);
+            document.getElementById('minute-target').addEventListener('input', markUnsaved);
 
             document.querySelectorAll('form').forEach(form => {
                 form.addEventListener('submit', function (event) {
@@ -766,8 +766,16 @@ const char CONFIG_HTML[] = R"rawliteral(
                 .then(data => {
                     // Base steps
                     if(data.base_steps) {
-                        document.getElementById('base-hour').value = data.base_steps.hour;
-                        document.getElementById('base-minute').value = data.base_steps.minute;
+                        if (typeof data.base_steps.hour_target_x100 !== 'undefined') {
+                            document.getElementById('hour-target').value = (data.base_steps.hour_target_x100 / 100).toFixed(2);
+                        } else {
+                            document.getElementById('hour-target').value = Number(data.base_steps.hour).toFixed(2);
+                        }
+                        if (typeof data.base_steps.minute_target_x100 !== 'undefined') {
+                            document.getElementById('minute-target').value = (data.base_steps.minute_target_x100 / 100).toFixed(2);
+                        } else {
+                            document.getElementById('minute-target').value = Number(data.base_steps.minute).toFixed(2);
+                        }
                     }
 
                     // Offsets

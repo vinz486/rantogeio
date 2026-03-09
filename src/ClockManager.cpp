@@ -3,6 +3,32 @@
 #include "ClockManager.h"
 #include "settings.h"
 
+int ClockManager::get_fractional_hour_extra(int hour_from) {
+  // Solution 1: quantized deterministic distribution over 24 hours
+  // extra = floor((h+1)*frac/100) - floor(h*frac/100)
+  int frac = HOUR_TARGET_X100 % 100;
+  int current = (hour_from * frac) / 100;
+  int next = ((hour_from + 1) * frac) / 100;
+  return next - current;
+}
+
+int ClockManager::get_effective_hour_offset(int hour_from) {
+  return _hour_offsets[hour_from] + get_fractional_hour_extra(hour_from);
+}
+
+int ClockManager::get_fractional_minute_extra(int minute_from) {
+  // Deterministic distribution over 60 minutes using 2 decimals in fixed-point x100
+  // extra = floor((m+1)*frac/100) - floor(m*frac/100)
+  int frac = MINUTE_TARGET_X100 % 100;
+  int current = (minute_from * frac) / 100;
+  int next = ((minute_from + 1) * frac) / 100;
+  return next - current;
+}
+
+int ClockManager::get_effective_minute_offset(int minute_from) {
+  return _minute_offsets[minute_from] + get_fractional_minute_extra(minute_from);
+}
+
 void ClockManager::begin() {
   _stepper.begin();
 
@@ -66,7 +92,7 @@ void ClockManager::tick() {
   if (_state == FAST_FORWARD_HOURS) {
     if (_ff_counter < 24) {
       // Read offset BEFORE incrementing
-      int hour_offset = _hour_offsets[_displayedHour];
+      int hour_offset = get_effective_hour_offset(_displayedHour);
       
       adjust_displayed_hour(1);
       _stepper.step(true, false, hour_offset);
@@ -84,7 +110,7 @@ void ClockManager::tick() {
   if (_state == FAST_FORWARD_MINUTES) {
     if (_ff_counter < 60) {
       // Read offset BEFORE incrementing
-      int minute_offset = _minute_offsets[_displayedMinute];
+      int minute_offset = get_effective_minute_offset(_displayedMinute);
       
       adjust_displayed_minute(1);
       _stepper.step(false, true, 0, minute_offset);
@@ -242,8 +268,8 @@ void ClockManager::sync_to_current_time() {
     offsetMinute--;
 
     // Read offsets BEFORE incrementing the displayed values
-    int hour_offset = _hour_offsets[_displayedHour];
-    int minute_offset = _minute_offsets[_displayedMinute];
+    int hour_offset = get_effective_hour_offset(_displayedHour);
+    int minute_offset = get_effective_minute_offset(_displayedMinute);
     
     if (hour_offset != 0) {
       (*_logger)("Applying hour offset: %d for H:%02d->%02d", hour_offset, _displayedHour, (_displayedHour + 1) % 24);
@@ -263,7 +289,7 @@ void ClockManager::sync_to_current_time() {
     offsetHour--;
 
     // Read offset BEFORE incrementing the displayed value
-    int hour_offset = _hour_offsets[_displayedHour];
+    int hour_offset = get_effective_hour_offset(_displayedHour);
     if (hour_offset != 0) {
       (*_logger)("Applying hour offset: %d for H:%02d->%02d", hour_offset, _displayedHour, (_displayedHour + 1) % 24);
     }
@@ -278,7 +304,7 @@ void ClockManager::sync_to_current_time() {
     offsetMinute--;
 
     // Read offset BEFORE incrementing the displayed value
-    int minute_offset = _minute_offsets[_displayedMinute];
+    int minute_offset = get_effective_minute_offset(_displayedMinute);
     if (minute_offset != 0) {
       (*_logger)("Applying minute offset: %d for M:%02d->%02d", minute_offset, _displayedMinute, (_displayedMinute + 1) % 60);
     }

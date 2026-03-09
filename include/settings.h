@@ -24,6 +24,8 @@
 // Default values for base steps (in microsteps) - these will be overridden by stored settings
 extern int HOUR_STEPS_BASE;
 extern int MINUTE_STEPS_BASE;
+extern int HOUR_TARGET_X100;
+extern int MINUTE_TARGET_X100;
 #define STEP_INTERVAL 54
 #define SIMULATE_12_HOUR 0
 

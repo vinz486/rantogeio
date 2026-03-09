@@ -111,6 +111,10 @@ private:
   void log_current_time();
   void set_minutes();
   void load_offsets();
+  int get_fractional_hour_extra(int hour_from);
+  int get_effective_hour_offset(int hour_from);
+  int get_fractional_minute_extra(int minute_from);
+  int get_effective_minute_offset(int minute_from);
   void adjust_displayed_hour(int count);
   void adjust_displayed_minute(int count);
 };
