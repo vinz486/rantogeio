@@ -609,6 +609,38 @@ const char CONFIG_HTML[] = R"rawliteral(
         let currentEdit = { type: '', index: -1 };
         let offsetsChanged = false;
 
+        function positiveMod(value, mod) {
+            return ((value % mod) + mod) % mod;
+        }
+
+        function normalizeDecimalInput(value) {
+            if (typeof value !== 'string') {
+                return value;
+            }
+            return value.replace(',', '.');
+        }
+
+        function applyCompensatedOffset(type, index, newValue) {
+            const isHour = type === 'hour';
+            const offsets = isHour ? hourOffsets : minuteOffsets;
+            const modulo = isHour ? 24 : 60;
+            const idx = positiveMod(parseInt(index, 10), modulo);
+            const nextIdx = (idx + 1) % modulo;
+
+            const oldValue = offsets[idx] || 0;
+            const safeNewValue = Number.isFinite(newValue) ? newValue : 0;
+            const delta = safeNewValue - oldValue;
+
+            offsets[idx] = safeNewValue;
+            offsets[nextIdx] = (offsets[nextIdx] || 0) - delta;
+        }
+
+        function deleteOffset(type, index) {
+            applyCompensatedOffset(type, index, 0);
+            renderOffsets();
+            markUnsaved();
+        }
+
         function updateSaveButtonState() {
             const saveBtn = document.getElementById('save-offsets-btn');
             if (offsetsChanged) {
@@ -634,7 +666,7 @@ const char CONFIG_HTML[] = R"rawliteral(
                     li.innerHTML = `<div><span class="offset-label">H ${index.toString().padStart(2, '0')}</span><span class="offset-value">${signedOffset}</span></div>` +
                                  '<div class="offset-actions">' +
                                  `<button class="btn btn-small" onclick="showOffsetModal('hour', ${index}, ${offset})">Edit</button>` +
-                                 `<button class="btn btn-small btn-delete" onclick="hourOffsets[${index}] = 0; renderOffsets(); markUnsaved();">Delete</button>` +
+                                 `<button class="btn btn-small btn-delete" onclick="deleteOffset('hour', ${index})">Delete</button>` +
                                  '</div>';
                     hourList.appendChild(li);
                 }
@@ -650,7 +682,7 @@ const char CONFIG_HTML[] = R"rawliteral(
                     li.innerHTML = `<div><span class="offset-label">M ${index.toString().padStart(2, '0')}</span><span class="offset-value">${signedOffset}</span></div>` +
                                  '<div class="offset-actions">' +
                                  `<button class="btn btn-small" onclick="showOffsetModal('minute', ${index}, ${offset})">Edit</button>` +
-                                 `<button class="btn btn-small btn-delete" onclick="minuteOffsets[${index}] = 0; renderOffsets(); markUnsaved();">Delete</button>` +
+                                 `<button class="btn btn-small btn-delete" onclick="deleteOffset('minute', ${index})">Delete</button>` +
                                  '</div>';
                     minuteList.appendChild(li);
                 }
@@ -689,13 +721,11 @@ const char CONFIG_HTML[] = R"rawliteral(
         }
 
         function saveOffset() {
-            const index = document.getElementById('modal-index').value;
-            const value = parseInt(document.getElementById('modal-value').value, 10);
-            if (currentEdit.type === 'hour') {
-                hourOffsets[index] = value;
-            } else {
-                minuteOffsets[index] = value;
-            }
+            const index = parseInt(document.getElementById('modal-index').value, 10);
+            const parsedValue = parseInt(document.getElementById('modal-value').value, 10);
+            const value = Number.isFinite(parsedValue) ? parsedValue : 0;
+
+            applyCompensatedOffset(currentEdit.type, index, value);
             renderOffsets();
             hideOffsetModal();
             markUnsaved();
@@ -705,8 +735,8 @@ const char CONFIG_HTML[] = R"rawliteral(
             const formData = new FormData();
             
             // Add targets
-            const hourTarget = document.getElementById('hour-target').value;
-            const minuteTarget = document.getElementById('minute-target').value;
+            const hourTarget = normalizeDecimalInput(document.getElementById('hour-target').value);
+            const minuteTarget = normalizeDecimalInput(document.getElementById('minute-target').value);
             if (hourTarget !== '') formData.append('hour_target', hourTarget);
             if (minuteTarget !== '') formData.append('minute_target', minuteTarget);
             

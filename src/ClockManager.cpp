@@ -91,13 +91,19 @@ void ClockManager::tick() {
 
   if (_state == FAST_FORWARD_HOURS) {
     if (_ff_counter < 24) {
-      // Read offset BEFORE incrementing
-      int hour_offset = get_effective_hour_offset(_displayedHour);
+      // Offset index uses arrival semantics: Hxx applies to transition (xx-1)->xx
+      int hour_to = (_displayedHour + 1) % 24;
+      int hour_offset = get_effective_hour_offset(hour_to);
       
       adjust_displayed_hour(1);
       _stepper.step(true, false, hour_offset);
       
-      (*_logger)("Fast forward H:%02d (offset: %+d) [%d/24]", _displayedHour, hour_offset, _ff_counter + 1);
+      (*_logger)("Fast forward H:%02d->%02d using H%02d (offset: %+d) [%d/24]",
+                 (_displayedHour + 23) % 24,
+                 _displayedHour,
+                 hour_to,
+                 hour_offset,
+                 _ff_counter + 1);
       _ff_counter++;
     } else {
       (*_logger)("Fast forward: Hour cycle completed");
@@ -109,13 +115,19 @@ void ClockManager::tick() {
 
   if (_state == FAST_FORWARD_MINUTES) {
     if (_ff_counter < 60) {
-      // Read offset BEFORE incrementing
-      int minute_offset = get_effective_minute_offset(_displayedMinute);
+      // Offset index uses arrival semantics: Mxx applies to transition (xx-1)->xx
+      int minute_to = (_displayedMinute + 1) % 60;
+      int minute_offset = get_effective_minute_offset(minute_to);
       
       adjust_displayed_minute(1);
       _stepper.step(false, true, 0, minute_offset);
       
-      (*_logger)("Fast forward M:%02d (offset: %+d) [%d/60]", _displayedMinute, minute_offset, _ff_counter + 1);
+      (*_logger)("Fast forward M:%02d->%02d using M%02d (offset: %+d) [%d/60]",
+                 (_displayedMinute + 59) % 60,
+                 _displayedMinute,
+                 minute_to,
+                 minute_offset,
+                 _ff_counter + 1);
       _ff_counter++;
     } else {
       (*_logger)("Fast forward: Minute cycle completed");
@@ -267,15 +279,19 @@ void ClockManager::sync_to_current_time() {
     offsetHour--;
     offsetMinute--;
 
-    // Read offsets BEFORE incrementing the displayed values
-    int hour_offset = get_effective_hour_offset(_displayedHour);
-    int minute_offset = get_effective_minute_offset(_displayedMinute);
+    // Arrival semantics: offset index is the destination bucket
+    int hour_from = _displayedHour;
+    int minute_from = _displayedMinute;
+    int hour_to = (hour_from + 1) % 24;
+    int minute_to = (minute_from + 1) % 60;
+    int hour_offset = get_effective_hour_offset(hour_to);
+    int minute_offset = get_effective_minute_offset(minute_to);
     
     if (hour_offset != 0) {
-      (*_logger)("Applying hour offset: %d for H:%02d->%02d", hour_offset, _displayedHour, (_displayedHour + 1) % 24);
+      (*_logger)("Applying hour offset H%02d for %02d->%02d: %+d", hour_to, hour_from, hour_to, hour_offset);
     }
     if (minute_offset != 0) {
-      (*_logger)("Applying minute offset: %d for M:%02d->%02d", minute_offset, _displayedMinute, (_displayedMinute + 1) % 60);
+      (*_logger)("Applying minute offset M%02d for %02d->%02d: %+d", minute_to, minute_from, minute_to, minute_offset);
     }
     
     adjust_displayed_hour(1);
@@ -288,10 +304,11 @@ void ClockManager::sync_to_current_time() {
   while (offsetHour > 0) {
     offsetHour--;
 
-    // Read offset BEFORE incrementing the displayed value
-    int hour_offset = get_effective_hour_offset(_displayedHour);
+    int hour_from = _displayedHour;
+    int hour_to = (hour_from + 1) % 24;
+    int hour_offset = get_effective_hour_offset(hour_to);
     if (hour_offset != 0) {
-      (*_logger)("Applying hour offset: %d for H:%02d->%02d", hour_offset, _displayedHour, (_displayedHour + 1) % 24);
+      (*_logger)("Applying hour offset H%02d for %02d->%02d: %+d", hour_to, hour_from, hour_to, hour_offset);
     }
     
     adjust_displayed_hour(1);
@@ -303,10 +320,11 @@ void ClockManager::sync_to_current_time() {
   while (offsetMinute > 0) {
     offsetMinute--;
 
-    // Read offset BEFORE incrementing the displayed value
-    int minute_offset = get_effective_minute_offset(_displayedMinute);
+    int minute_from = _displayedMinute;
+    int minute_to = (minute_from + 1) % 60;
+    int minute_offset = get_effective_minute_offset(minute_to);
     if (minute_offset != 0) {
-      (*_logger)("Applying minute offset: %d for M:%02d->%02d", minute_offset, _displayedMinute, (_displayedMinute + 1) % 60);
+      (*_logger)("Applying minute offset M%02d for %02d->%02d: %+d", minute_to, minute_from, minute_to, minute_offset);
     }
     
     adjust_displayed_minute(1);
@@ -447,69 +465,63 @@ void ClockManager::live_calibrate_step(bool is_hour, int direction) {
   
   if (is_hour) {
     int current_hour = _displayedHour;
-    int prev_hour = (current_hour == 0) ? 23 : current_hour - 1;
+    int next_hour = (current_hour + 1) % 24;
     
     if (direction > 0) {
       // Move forward physically: execute steps immediately
       (*_logger)("Live calibrate: Hour forward at H:%02d", current_hour);
       _stepper.step_hour(STEP_DELTA);  // Move ONLY STEP_DELTA steps
       
-      // Increase offset for transition to current hour (prev->current)
-      _hour_offsets[prev_hour] += STEP_DELTA;
+      // Arrival semantics: Hcurrent applies to transition (prev->current)
+      _hour_offsets[current_hour] += STEP_DELTA;
       
-      // Decrease offset for transition from current hour (current->next) to compensate
-      _hour_offsets[current_hour] -= STEP_DELTA;
+      // Compensate on next arrival bucket
+      _hour_offsets[next_hour] -= STEP_DELTA;
       
       (*_logger)("  H%02d offset: %+d, H%02d offset: %+d", 
-                 prev_hour, _hour_offsets[prev_hour], 
-                 current_hour, _hour_offsets[current_hour]);
+                 current_hour, _hour_offsets[current_hour], 
+                 next_hour, _hour_offsets[next_hour]);
     } else if (direction < 0) {
       // Move backward (logically): reduce offset for next cycle
       (*_logger)("Live calibrate: Hour backward at H:%02d (takes effect next cycle)", current_hour);
       
-      // Decrease offset for transition to current hour (prev->current)
-      _hour_offsets[prev_hour] -= STEP_DELTA;
+      _hour_offsets[current_hour] -= STEP_DELTA;
       
-      // Increase offset for transition from current hour (current->next) to compensate
-      _hour_offsets[current_hour] += STEP_DELTA;
+      _hour_offsets[next_hour] += STEP_DELTA;
       
       (*_logger)("  H%02d offset: %+d, H%02d offset: %+d", 
-                 prev_hour, _hour_offsets[prev_hour], 
-                 current_hour, _hour_offsets[current_hour]);
+                 current_hour, _hour_offsets[current_hour], 
+                 next_hour, _hour_offsets[next_hour]);
     }
     
   } else {
     // Minutes
     int current_minute = _displayedMinute;
-    int prev_minute = (current_minute == 0) ? 59 : current_minute - 1;
+    int next_minute = (current_minute + 1) % 60;
     
     if (direction > 0) {
       // Move forward physically: execute steps immediately
       (*_logger)("Live calibrate: Minute forward at M:%02d", current_minute);
       _stepper.step_minute(STEP_DELTA);  // Move ONLY STEP_DELTA steps
       
-      // Increase offset for transition to current minute (prev->current)
-      _minute_offsets[prev_minute] += STEP_DELTA;
+      _minute_offsets[current_minute] += STEP_DELTA;
       
-      // Decrease offset for transition from current minute (current->next) to compensate
-      _minute_offsets[current_minute] -= STEP_DELTA;
+      _minute_offsets[next_minute] -= STEP_DELTA;
       
       (*_logger)("  M%02d offset: %+d, M%02d offset: %+d", 
-                 prev_minute, _minute_offsets[prev_minute], 
-                 current_minute, _minute_offsets[current_minute]);
+                 current_minute, _minute_offsets[current_minute], 
+                 next_minute, _minute_offsets[next_minute]);
     } else if (direction < 0) {
       // Move backward (logically): reduce offset for next cycle
       (*_logger)("Live calibrate: Minute backward at M:%02d (takes effect next cycle)", current_minute);
       
-      // Decrease offset for transition to current minute (prev->current)
-      _minute_offsets[prev_minute] -= STEP_DELTA;
+      _minute_offsets[current_minute] -= STEP_DELTA;
       
-      // Increase offset for transition from current minute (current->next) to compensate
-      _minute_offsets[current_minute] += STEP_DELTA;
+      _minute_offsets[next_minute] += STEP_DELTA;
       
       (*_logger)("  M%02d offset: %+d, M%02d offset: %+d", 
-                 prev_minute, _minute_offsets[prev_minute], 
-                 current_minute, _minute_offsets[current_minute]);
+                 current_minute, _minute_offsets[current_minute], 
+                 next_minute, _minute_offsets[next_minute]);
     }
   }
   

@@ -334,15 +334,33 @@ void start_server() {
     }
 
     if (request->hasParam("minute_target", true)) {
-      float minute_target = request->getParam("minute_target", true)->value().toFloat();
+      String minute_target_raw = request->getParam("minute_target", true)->value();
+      String minute_target_normalized = minute_target_raw;
+      minute_target_normalized.replace(',', '.');
+      float minute_target = minute_target_normalized.toFloat();
       MINUTE_TARGET_X100 = (int)(minute_target * 100.0f + 0.5f);
       MINUTE_STEPS_BASE = MINUTE_TARGET_X100 / 100;
+
+      send_message("minute_target raw='%s' normalized='%s' parsed=%.2f x100=%d",
+                   minute_target_raw.c_str(),
+                   minute_target_normalized.c_str(),
+                   minute_target,
+                   MINUTE_TARGET_X100);
     }
 
     if (request->hasParam("hour_target", true)) {
-      float hour_target = request->getParam("hour_target", true)->value().toFloat();
+      String hour_target_raw = request->getParam("hour_target", true)->value();
+      String hour_target_normalized = hour_target_raw;
+      hour_target_normalized.replace(',', '.');
+      float hour_target = hour_target_normalized.toFloat();
       HOUR_TARGET_X100 = (int)(hour_target * 100.0f + 0.5f);
       HOUR_STEPS_BASE = HOUR_TARGET_X100 / 100;
+
+      send_message("hour_target raw='%s' normalized='%s' parsed=%.2f x100=%d",
+                   hour_target_raw.c_str(),
+                   hour_target_normalized.c_str(),
+                   hour_target,
+                   HOUR_TARGET_X100);
     }
 
     // Save base/target minute steps to preferences
