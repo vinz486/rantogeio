@@ -21,13 +21,8 @@
 #include <sys/time.h>
 
 #include "ClockManager.h"
+#include "NumberParsing.h"
 #include "TimeZoneManager.h"
-
-// Global variables for configurable base steps (in microsteps)
-int HOUR_STEPS_BASE = 7872;    // Default value (492 * 16 microstepping)
-int MINUTE_STEPS_BASE = 18832; // Default value (1177 * 16 microstepping)
-int HOUR_TARGET_X100 = 787200; // 2 decimal fixed point (e.g. 7872.25 => 787225)
-int MINUTE_TARGET_X100 = 1883200; // 2 decimal fixed point (e.g. 18874.50 => 1887450)
 
 ClockManager clock_manager;
 TimeZoneManager time_zone_manager;
@@ -44,9 +39,7 @@ WifiManager wifi_manager;
 #endif
 
 
-typedef void (*logger_cb_t) (const char * format, ...);
-
-void send_message(const char *format, ...);
+void send_message(const char *format, ...) __attribute__((format(printf, 1, 2)));
 #if ENABLE_WIFI == 1
 void start_server();
 #endif
@@ -58,23 +51,12 @@ void setup() {
   Serial.begin(115200);
   delay(1000);
 
+  clock_manager.set_logger(send_message);
+  clock_manager.begin();
+
 #if ENABLE_BUTTONS == 1
   start_buttons();
 #endif
-
-  // Load base steps from preferences with migration from old format
-  Preferences base_prefs;
-  base_prefs.begin("base-steps", true);
-  HOUR_STEPS_BASE = base_prefs.getInt("hour", 7872);
-  MINUTE_STEPS_BASE = base_prefs.getInt("minute", 18832);
-  HOUR_TARGET_X100 = base_prefs.getInt("hour_target_x100", HOUR_STEPS_BASE * 100);
-  MINUTE_TARGET_X100 = base_prefs.getInt("minute_target_x100", MINUTE_STEPS_BASE * 100);
-  
-
-  base_prefs.end();
-
-  clock_manager.set_logger(send_message);
-  clock_manager.begin();
 
 #if ENABLE_WIFI == 1
   wifi_manager.begin();
@@ -103,7 +85,7 @@ void loop() {
   wifi_manager.loop();
 #endif
 
-  delay(1000);
+  delay(1);
 }
 
 void send_message(const char *format, ...) {
@@ -122,7 +104,24 @@ void send_message(const char *format, ...) {
 
 #if ENABLE_WIFI == 1
 
-String test = "Ciao";
+void sendCommand(AsyncWebServerRequest* request, ClockManager::Command command) {
+  const uint32_t id = clock_manager.submit(command);
+  if (!id) {
+    request->send(503, "text/plain", "Command queue full. Please retry.");
+    return;
+  }
+  request->send(202, "application/json", "{\"id\":" + String(id) + "}");
+}
+
+void sendAction(AsyncWebServerRequest* request, ClockManager::Action action,
+                int a = 0, int b = 0, int c = 0) {
+  ClockManager::Command command;
+  command.action = action;
+  command.a = a;
+  command.b = b;
+  command.c = c;
+  sendCommand(request, command);
+}
 
 
 void start_server() {
@@ -139,8 +138,7 @@ void start_server() {
       int h = request->getParam("h", true)->value().toInt();
       int m = request->getParam("m", true)->value().toInt();
 
-      clock_manager.set_displayed_time(h, m);
-      request->send_P(200, "text/plain", "OK");
+      sendAction(request, ClockManager::Action::DISPLAYED_TIME, h, m);
 
     } else {
       request->send_P(400, "text/plain", "Missing parameters");
@@ -152,10 +150,7 @@ void start_server() {
       int h = request->getParam("h", true)->value().toInt();
       int m = request->getParam("m", true)->value().toInt();
 
-      clock_manager.set_current_time(h, m, 0);
-      clock_manager.time_source = WEB;
-
-      request->send_P(200, "text/plain", "OK");
+      sendAction(request, ClockManager::Action::CURRENT_TIME, h, m);
     } else {
       request->send_P(400, "text/plain", "Missing parameters");
     }
@@ -167,9 +162,7 @@ void start_server() {
       int m = request->getParam("m", true)->value().toInt();
       int y = request->getParam("y", true)->value().toInt();
 
-      clock_manager.set_current_date(d, m, y);
-
-      request->send_P(200, "text/plain", "OK");
+      sendAction(request, ClockManager::Action::CURRENT_DATE, d, m, y);
     } else {
       request->send_P(400, "text/plain", "Missing parameters");
     }
@@ -192,9 +185,15 @@ void start_server() {
       String casio = request->getParam("casio", true)->value();
       bool calibration_hint = request->hasParam("calibration_hint", true);
 
-      clock_manager.set_casio(casio, calibration_hint);
-
-      request->send_P(200, "text/plain", "OK");
+      if (casio != "off" && casio != "on" && casio != "day") {
+        request->send(400, "text/plain", "Invalid CASIO mode.");
+        return;
+      }
+      ClockManager::Command command;
+      command.action = ClockManager::Action::CASIO_MODE;
+      command.a = calibration_hint;
+      snprintf(command.text, sizeof(command.text), "%s", casio.c_str());
+      sendCommand(request, command);
     } else {
       request->send_P(400, "text/plain", "Missing parameters");
     }
@@ -217,18 +216,19 @@ void start_server() {
   });
 
   server.on("/calibrate-hour", HTTP_POST, [](AsyncWebServerRequest *request) {
-    clock_manager.request_calibrate_hour();
-    request->send_P(200, "text/plain", "OK");
+    sendAction(request, ClockManager::Action::CALIBRATE_HOUR);
   });
 
   server.on("/calibrate-minute", HTTP_POST, [](AsyncWebServerRequest *request) {
-    clock_manager.request_calibrate_minute();
-    request->send_P(200, "text/plain", "OK");
+    sendAction(request, ClockManager::Action::CALIBRATE_MINUTE);
   });
 
   server.on("/calibrate-end", HTTP_POST, [](AsyncWebServerRequest *request) {
-    clock_manager.request_end_calibrate();
-    request->send_P(200, "text/plain", "OK");
+    sendAction(request, ClockManager::Action::STOP);
+  });
+
+  server.on("/resume", HTTP_POST, [](AsyncWebServerRequest *request) {
+    sendAction(request, ClockManager::Action::RESUME);
   });
 
 
@@ -237,23 +237,23 @@ void start_server() {
       String type = request->getParam("type", true)->value();
       int direction = request->getParam("direction", true)->value().toInt();
       
-      bool is_hour = (type == "hour");
-      clock_manager.live_calibrate_step(is_hour, direction);
-      
-      request->send_P(200, "text/plain", "OK");
+      if ((type != "hour" && type != "minute") || (direction != -1 && direction != 1)) {
+        request->send(400, "text/plain", "Invalid calibration axis or direction.");
+        return;
+      }
+      sendAction(request, type == "hour" ? ClockManager::Action::LIVE_HOUR
+                                          : ClockManager::Action::LIVE_MINUTE, direction);
     } else {
       request->send_P(400, "text/plain", "Missing parameters");
     }
   });
 
   server.on("/fast-forward-hours", HTTP_POST, [](AsyncWebServerRequest *request) {
-    clock_manager.request_fast_forward_hours();
-    request->send_P(200, "text/plain", "OK");
+    sendAction(request, ClockManager::Action::FAST_HOURS);
   });
 
   server.on("/fast-forward-minutes", HTTP_POST, [](AsyncWebServerRequest *request) {
-    clock_manager.request_fast_forward_minutes();
-    request->send_P(200, "text/plain", "OK");
+    sendAction(request, ClockManager::Action::FAST_MINUTES);
   });
 
   server.on("/get-settings", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -267,8 +267,8 @@ void start_server() {
 
     // Time Zone
     Preferences tz_prefs;
-    tz_prefs.begin("time-zone", true);
-    response += "\"tz_name\":\"" + tz_prefs.getString("name", "") + "\",";
+    tz_prefs.begin("time", true);
+    response += "\"tz_name\":\"" + tz_prefs.getString("tz_name", "") + "\",";
     tz_prefs.end();
 
     // CASIO mode
@@ -288,114 +288,74 @@ void start_server() {
     response += "\"year\":" + String(timeinfo.tm_year + 1900);
     response += "},";
 
-    // Base steps
+    const auto snapshot = clock_manager.snapshot();
+    const auto& config = snapshot.settings;
+    response += "\"paused\":" + String(snapshot.paused ? "true" : "false") + ",";
     response += "\"base_steps\":{";
-    response += "\"hour\":" + String(HOUR_STEPS_BASE) + ",";
-    response += "\"hour_target_x100\":" + String(HOUR_TARGET_X100) + ",";
-    response += "\"minute\":" + String(MINUTE_STEPS_BASE) + ",";
-    response += "\"minute_target_x100\":" + String(MINUTE_TARGET_X100);
+    response += "\"hour\":" + String(config.hour_target / 100) + ",";
+    response += "\"hour_target_x100\":" + String(config.hour_target) + ",";
+    response += "\"minute\":" + String(config.minute_target / 100) + ",";
+    response += "\"minute_target_x100\":" + String(config.minute_target);
     response += "},";
-
-    // Offsets
     response += "\"offsets\":{\"hours\":[";
-    Preferences offsets_prefs;
-    offsets_prefs.begin("offsets", true);
-    for (int i = 0; i < 24; i++) {
-      char key[5];
-      sprintf(key, "h%d", i);
-      response += offsets_prefs.getInt(key, 0);
+    for (int i = 0; i < 24; ++i) {
+      response += String(config.hours[i]);
       if (i < 23) response += ",";
     }
     response += "],\"minutes\":[";
-    for (int i = 0; i < 60; i++) {
-      char key[5];
-      sprintf(key, "m%d", i);
-      response += offsets_prefs.getInt(key, 0);
+    for (int i = 0; i < 60; ++i) {
+      response += String(config.minutes[i]);
       if (i < 59) response += ",";
     }
     response += "]}}";
-    offsets_prefs.end();
 
     request->send(200, "application/json", response);
   });
 
   server.on("/set-offsets", HTTP_POST, [](AsyncWebServerRequest *request) {
-    int hour_offsets[24];
-    int minute_offsets[60];
-
-    // Handle base steps if provided
-    if (request->hasParam("base_hour", true)) {
-      HOUR_STEPS_BASE = request->getParam("base_hour", true)->value().toInt();
-      HOUR_TARGET_X100 = HOUR_STEPS_BASE * 100;
+    ClockManager::Command command;
+    command.action = ClockManager::Action::SETTINGS;
+    if (!request->hasParam("hour_target", true) || !request->hasParam("minute_target", true) ||
+        !parseTarget(request->getParam("hour_target", true)->value().c_str(), command.settings.hour_target) ||
+        !parseTarget(request->getParam("minute_target", true)->value().c_str(), command.settings.minute_target)) {
+      request->send(400, "text/plain", "Targets must be positive numbers (at least 1), with up to two decimals.");
+      return;
     }
-    if (request->hasParam("base_minute", true)) {
-      MINUTE_STEPS_BASE = request->getParam("base_minute", true)->value().toInt();
-      MINUTE_TARGET_X100 = MINUTE_STEPS_BASE * 100;
-    }
-
-    if (request->hasParam("minute_target", true)) {
-      String minute_target_raw = request->getParam("minute_target", true)->value();
-      String minute_target_normalized = minute_target_raw;
-      minute_target_normalized.replace(',', '.');
-      float minute_target = minute_target_normalized.toFloat();
-      MINUTE_TARGET_X100 = (int)(minute_target * 100.0f + 0.5f);
-      MINUTE_STEPS_BASE = MINUTE_TARGET_X100 / 100;
-
-      send_message("minute_target raw='%s' normalized='%s' parsed=%.2f x100=%d",
-                   minute_target_raw.c_str(),
-                   minute_target_normalized.c_str(),
-                   minute_target,
-                   MINUTE_TARGET_X100);
-    }
-
-    if (request->hasParam("hour_target", true)) {
-      String hour_target_raw = request->getParam("hour_target", true)->value();
-      String hour_target_normalized = hour_target_raw;
-      hour_target_normalized.replace(',', '.');
-      float hour_target = hour_target_normalized.toFloat();
-      HOUR_TARGET_X100 = (int)(hour_target * 100.0f + 0.5f);
-      HOUR_STEPS_BASE = HOUR_TARGET_X100 / 100;
-
-      send_message("hour_target raw='%s' normalized='%s' parsed=%.2f x100=%d",
-                   hour_target_raw.c_str(),
-                   hour_target_normalized.c_str(),
-                   hour_target,
-                   HOUR_TARGET_X100);
-    }
-
-    // Save base/target minute steps to preferences
-    if (request->hasParam("base_hour", true) || request->hasParam("base_minute", true) || request->hasParam("hour_target", true) || request->hasParam("minute_target", true)) {
-      Preferences base_prefs;
-      base_prefs.begin("base-steps", false);
-      base_prefs.putInt("hour", HOUR_STEPS_BASE);
-      base_prefs.putInt("hour_target_x100", HOUR_TARGET_X100);
-      base_prefs.putInt("minute", MINUTE_STEPS_BASE);
-      base_prefs.putInt("minute_target_x100", MINUTE_TARGET_X100);
-      base_prefs.end();
-    }
-
-    for (int i = 0; i < 24; i++) {
+    for (int i = 0; i < 60; ++i) {
       char key[5];
-      sprintf(key, "h%d", i);
-      if (request->hasParam(key, true)) {
-        hour_offsets[i] = request->getParam(key, true)->value().toInt();
-      } else {
-        hour_offsets[i] = 0;
+      snprintf(key, sizeof(key), "m%d", i);
+      if (!request->hasParam(key, true) ||
+          !parseInteger(request->getParam(key, true)->value().c_str(), command.settings.minutes[i])) {
+        request->send(400, "text/plain", "All minute offsets must be valid integers.");
+        return;
+      }
+      if (i < 24) {
+        snprintf(key, sizeof(key), "h%d", i);
+        if (!request->hasParam(key, true) ||
+            !parseInteger(request->getParam(key, true)->value().c_str(), command.settings.hours[i])) {
+          request->send(400, "text/plain", "All hour offsets must be valid integers.");
+          return;
+        }
       }
     }
+    sendCommand(request, command);
+  });
 
-    for (int i = 0; i < 60; i++) {
-      char key[5];
-      sprintf(key, "m%d", i);
-      if (request->hasParam(key, true)) {
-        minute_offsets[i] = request->getParam(key, true)->value().toInt();
-      } else {
-        minute_offsets[i] = 0;
-      }
+  server.on("/command-status", HTTP_GET, [](AsyncWebServerRequest *request) {
+    int32_t id = 0;
+    ClockManager::Result result;
+    if (!request->hasParam("id") || !parseInteger(request->getParam("id")->value().c_str(), id) || id <= 0) {
+      request->send(400, "text/plain", "Invalid command id.");
+    } else if (!clock_manager.result(uint32_t(id), result)) {
+      request->send(404, "text/plain", "Command status expired. Reload settings to verify the result.");
+    } else {
+      String response = "{\"done\":";
+      response += result.done ? "true" : "false";
+      response += ",\"success\":";
+      response += result.success ? "true" : "false";
+      response += ",\"message\":\"" + String(result.message) + "\"}";
+      request->send(200, "application/json", response);
     }
-
-    clock_manager.save_offsets(hour_offsets, minute_offsets);
-    request->send_P(200, "text/plain", "OK");
   });
 
   server.on("/reset", HTTP_POST, [](AsyncWebServerRequest *request) {
@@ -408,7 +368,7 @@ void start_server() {
     request->send_P(200, "text/plain", "OK");
     
     // Clear all preferences
-    const char* namespaces[] = {"wifi", "time", "base-steps", "offsets", "time-zone"};
+    const char* namespaces[] = {"wifi", "time", "base-steps", "offsets", "motion", "time-zone"};
     for (const char* ns : namespaces) {
       Preferences p;
       p.begin(ns, false);

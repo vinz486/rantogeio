@@ -6,8 +6,6 @@
 #include <Arduino.h>
 #include <Preferences.h>
 
-typedef void (*logger_cb_t) (const char * format, ...);
-
 class TimeZoneManager {
 public:
   void begin(ClockManager *clock);

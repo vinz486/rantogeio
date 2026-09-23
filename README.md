@@ -1,6 +1,6 @@
 # Rantoge ESP32 Clock Controller
 
-This project is a clock controller for Rantoge ESP32 that drives stepper motors to control hour and minute hands of an analog clock.
+This project is an ESP32 controller for an electromechanical clock with independent hour and minute stepper motors.
 
 ## Features
 
@@ -28,9 +28,20 @@ See `include/settings.h` for pin configurations.
 The system uses offsets to fine-tune the stepper motor positions for precise clock calibration:
 
 ### How it works
-The offsets are added to base step values to achieve the correct position:
-- **Hours**: `(492 + hour_offset) × MICROSTEPPING_MULTIPLIER` steps
-- **Minutes**: `(1180 + minute_offset) × MICROSTEPPING_MULTIPLIER` steps
+Targets are average **microsteps per digit**, with up to two decimal places.
+For each movement the controller adds the integer part, the destination digit's
+position offset minus the currently applied position offset, and any whole
+microstep accumulated from the fractional part.
+The two motors have independent fractional accumulators, which continue across
+the 24-hour and 60-minute boundaries. For example, a minute target of `18874.33`
+produces exactly `1,887,433` microsteps over 100 minute advances, with zero offsets.
+
+An offset `M10 = +100` means that digit 10 must be positioned 100 microsteps
+further forward. Digit 11's UI offset remains zero; the firmware calculates the
+shorter departure from digit 10 automatically. Offsets are independent position
+corrections, so they do not change the steady-state total per revolution. Every
+effective movement must remain positive and fit in a signed 32-bit pulse count.
+Invalid settings are rejected before saving or moving either motor.
 
 ### Purpose
 Compensate for mechanical imprecisions, gear backlash, or initial positioning errors that may occur in different clock assemblies.
@@ -42,7 +53,52 @@ Compensate for mechanical imprecisions, gear backlash, or initial positioning er
 4. **IMPORTANT**: After adding or editing any offset value, you must click "Save All Offsets" to permanently store the changes
 
 ### Calibration
-Use the `calibrate_hour()` and `calibrate_minute()` functions to determine the optimal offset values for your specific clock assembly.
+On Save All Offsets, an increased position correction for the current digit moves
+the motor forward immediately if that position has not already been reached.
+Corrections to other digits take effect on arrival. Decreasing the current
+digit's position correction takes effect next cycle because the motor cannot
+move backward. The actual applied correction is tracked until then, avoiding an
+early compensation on the next digit. Re-saving identical values does not move
+the motor again.
+
+Live `+` and `-` change the current digit's requested position offset by 100
+microsteps through the same planner. Unsaved UI adjustments are preserved and
+rebased on the updated saved offsets, even if edited while the request is pending.
+
+Normal operation, fast forward and minute setting use the same movement planner.
+Displayed position and fractional carry are committed after emitting the pulses.
+There is no encoder feedback: this confirms commanded pulses, not mechanical
+motion or motor stalls.
+
+### Command execution and storage
+
+Web and button callbacks enqueue commands; only the Arduino loop drives motors
+or changes motion state. HTTP `202` returns a command ID. The UI polls
+`/command-status?id=...` and reports success only after execution. A full queue
+returns `503`; an execution failure is reported in the command result.
+
+Stop uses a separate priority mailbox and is accepted even when the queue is
+full. It cancels commands submitted before Stop and leaves the clock paused,
+without automatic catch-up. The current digit movement finishes first to keep
+the position reference intact; continuous calibration uses short batches.
+Resume clock explicitly restarts time synchronization. Position calibration and
+saving offsets are also available while paused.
+
+Targets and offset arrays are stored together in the `motion/config` NVS record.
+The record's version 2 stores positional offsets. Earlier zero-sum arrival
+tables are converted to equivalent relative positions with digit zero as the
+reference; earlier shortened target keys are also supported. Failed writes leave
+the active configuration unchanged. Fractional carry and the actual applied
+position correction are held in RAM. After an interruption, the displayed-time
+reference must still be aligned manually.
+
+### Tests
+
+Run `python3 test/run_host_tests.py` with Python 3, g++ and Node.js installed.
+The suite compiles the actual planner, controller and driver against simulated
+GPIO, NVS and task queues, with AddressSanitizer and UndefinedBehaviorSanitizer.
+It also tests the JavaScript embedded in the firmware. Hardware timing and motor
+alignment still require a check on the clock.
 
 ## Development
 

@@ -373,6 +373,7 @@ const char CONFIG_HTML[] = R"rawliteral(
 
             <div class="card">
                 <h2>Calibrate</h2>
+                <p>Stop completes the current digit movement, then pauses the clock. Use Resume to restart.</p>
                 <form>
                     <div class="form-row">
                         <div class="form-group">
@@ -383,6 +384,7 @@ const char CONFIG_HTML[] = R"rawliteral(
                         </div>
                         <div class="form-group">
                             <button type="submit" class="btn" formaction="/calibrate-end" formmethod="post">Stop</button>
+                             <button type="submit" class="btn" formaction="/resume" formmethod="post">Resume clock</button>
                         </div>
                     </div>
                 </form>
@@ -398,10 +400,10 @@ const char CONFIG_HTML[] = R"rawliteral(
                     <label>Hours</label>
                     <div class="form-row">
                         <div class="form-group">
-                            <button type="button" class="btn" onclick="liveCalibrate('hour', -1)">- H</button>
+                            <button type="button" class="btn" data-offset-command onclick="liveCalibrate('hour', -1)">- H</button>
                         </div>
                         <div class="form-group">
-                            <button type="button" class="btn" onclick="liveCalibrate('hour', 1)">+ H</button>
+                            <button type="button" class="btn" data-offset-command onclick="liveCalibrate('hour', 1)">+ H</button>
                         </div>
                     </div>
                 </div>
@@ -409,10 +411,10 @@ const char CONFIG_HTML[] = R"rawliteral(
                     <label>Minutes</label>
                     <div class="form-row">
                         <div class="form-group">
-                            <button type="button" class="btn" onclick="liveCalibrate('minute', -1)">- M</button>
+                            <button type="button" class="btn" data-offset-command onclick="liveCalibrate('minute', -1)">- M</button>
                         </div>
                         <div class="form-group">
-                            <button type="button" class="btn" onclick="liveCalibrate('minute', 1)">+ M</button>
+                            <button type="button" class="btn" data-offset-command onclick="liveCalibrate('minute', 1)">+ M</button>
                         </div>
                     </div>
                 </div>
@@ -429,12 +431,15 @@ const char CONFIG_HTML[] = R"rawliteral(
             </div>
 
             <div class="card">
-                <h2>Stepper Offsets</h2>
+                <h2>Digit Position Offsets</h2>
+                <p>Add a positive offset to advance a late digit. Each value corrects only that digit.
+                   Save All Offsets applies changes: forward corrections of the current digit move immediately;
+                   backward corrections take effect on its next cycle.</p>
                 <div id="offsets-container">
                     <h3>Hour Offsets</h3>
                     <div class="form-group">
                         <label for="hour-target">Hour Target (2 decimali):</label>
-                        <input type="number" id="hour-target" step="0.01" min="0" placeholder="7872.00" />
+                        <input type="number" id="hour-target" step="0.01" min="1" placeholder="7872.00" />
                     </div>
                     <ul id="hour-offsets-list"></ul>
                     <button type="button" class="btn" onclick="showOffsetModal('hour')">Add Hour Offset</button>
@@ -442,7 +447,7 @@ const char CONFIG_HTML[] = R"rawliteral(
                     <h3>Minute Offsets</h3>
                     <div class="form-group">
                         <label for="minute-target">Minute Target (2 decimali):</label>
-                        <input type="number" id="minute-target" step="0.01" min="0" placeholder="18874.50" />
+                        <input type="number" id="minute-target" step="0.01" min="1" placeholder="18874.50" />
                     </div>
                     <ul id="minute-offsets-list"></ul>
                     <button type="button" class="btn" onclick="showOffsetModal('minute')">Add Minute Offset</button>
@@ -608,6 +613,9 @@ const char CONFIG_HTML[] = R"rawliteral(
         let minuteOffsets = new Array(60).fill(0);
         let currentEdit = { type: '', index: -1 };
         let offsetsChanged = false;
+        let offsetsRevision = 0;
+        let savedHourOffsets = new Array(24).fill(0);
+        let savedMinuteOffsets = new Array(60).fill(0);
 
         function positiveMod(value, mod) {
             return ((value % mod) + mod) % mod;
@@ -620,23 +628,30 @@ const char CONFIG_HTML[] = R"rawliteral(
             return value.replace(',', '.');
         }
 
-        function applyCompensatedOffset(type, index, newValue) {
-            const isHour = type === 'hour';
-            const offsets = isHour ? hourOffsets : minuteOffsets;
-            const modulo = isHour ? 24 : 60;
+        function applyDigitOffset(type, index, newValue) {
+            const offsets = type === 'hour' ? hourOffsets : minuteOffsets;
+            const modulo = type === 'hour' ? 24 : 60;
             const idx = positiveMod(parseInt(index, 10), modulo);
-            const nextIdx = (idx + 1) % modulo;
+            offsets[idx] = newValue;
+        }
 
-            const oldValue = offsets[idx] || 0;
-            const safeNewValue = Number.isFinite(newValue) ? newValue : 0;
-            const delta = safeNewValue - oldValue;
+        function mergeSavedOffsets(offsets) {
+            // Rebase local, unsaved adjustments on the newly saved calibration.
+            // This also preserves edits made while the live request was running.
+            hourOffsets = offsets.hours.map((value, i) => value + hourOffsets[i] - savedHourOffsets[i]);
+            minuteOffsets = offsets.minutes.map((value, i) => value + minuteOffsets[i] - savedMinuteOffsets[i]);
+            savedHourOffsets = offsets.hours.slice();
+            savedMinuteOffsets = offsets.minutes.slice();
+            renderOffsets();
+        }
 
-            offsets[idx] = safeNewValue;
-            offsets[nextIdx] = (offsets[nextIdx] || 0) - delta;
+        function setOffsetRequestBusy(busy) {
+            document.getElementById('save-offsets-btn').disabled = busy;
+            document.querySelectorAll('[data-offset-command]').forEach(button => button.disabled = busy);
         }
 
         function deleteOffset(type, index) {
-            applyCompensatedOffset(type, index, 0);
+            applyDigitOffset(type, index, 0);
             renderOffsets();
             markUnsaved();
         }
@@ -651,6 +666,7 @@ const char CONFIG_HTML[] = R"rawliteral(
         }
 
         function markUnsaved() {
+            ++offsetsRevision;
             offsetsChanged = true;
             updateSaveButtonState();
         }
@@ -722,42 +738,62 @@ const char CONFIG_HTML[] = R"rawliteral(
 
         function saveOffset() {
             const index = parseInt(document.getElementById('modal-index').value, 10);
-            const parsedValue = parseInt(document.getElementById('modal-value').value, 10);
-            const value = Number.isFinite(parsedValue) ? parsedValue : 0;
+            const raw = document.getElementById('modal-value').value.trim();
+            const value = Number(raw);
+            if (raw === '' || !Number.isInteger(value) || value < -2147483648 || value > 2147483647) {
+                alert('Offset must be a whole number of microsteps.');
+                return;
+            }
 
-            applyCompensatedOffset(currentEdit.type, index, value);
+            applyDigitOffset(currentEdit.type, index, value);
             renderOffsets();
             hideOffsetModal();
             markUnsaved();
         }
 
-        function saveAllOffsets() {
-            const formData = new FormData();
-            
-            // Add targets
-            const hourTarget = normalizeDecimalInput(document.getElementById('hour-target').value);
-            const minuteTarget = normalizeDecimalInput(document.getElementById('minute-target').value);
-            if (hourTarget !== '') formData.append('hour_target', hourTarget);
-            if (minuteTarget !== '') formData.append('minute_target', minuteTarget);
-            
-            // Add offsets
-            for(let i=0; i<24; i++) {
-                formData.append('h' + i, hourOffsets[i]);
-            }
-            for(let i=0; i<60; i++) {
-                formData.append('m' + i, minuteOffsets[i]);
-            }
-
-            fetch('/set-offsets', {
-                method: 'POST',
-                body: formData
-            }).then(res => {
-                if (res.ok) {
-                    offsetsChanged = false;
-                    updateSaveButtonState();
+        async function postCommand(url, options) {
+            const response = await fetch(url, options);
+            if (!response.ok) throw new Error(await response.text());
+            if (response.status !== 202) return response.text();
+            const { id } = await response.json();
+            const deadline = Date.now() + 120000;
+            while (Date.now() < deadline) {
+                await new Promise(resolve => setTimeout(resolve, 200));
+                const status = await fetch('/command-status?id=' + id, { cache: 'no-store' });
+                if (!status.ok) throw new Error(await status.text());
+                const result = await status.json();
+                if (result.done) {
+                    if (!result.success) throw new Error(result.message);
+                    return result.message;
                 }
-                return res.text();
-            }).then(console.log);
+            }
+            throw new Error('Command is still pending. Reload settings before retrying.');
+        }
+
+        async function saveAllOffsets() {
+            const button = document.getElementById('save-offsets-btn');
+            if (button.disabled) return;
+            const revision = offsetsRevision;
+            const submittedHours = hourOffsets.slice();
+            const submittedMinutes = minuteOffsets.slice();
+            const formData = new FormData();
+            formData.append('hour_target', normalizeDecimalInput(document.getElementById('hour-target').value));
+            formData.append('minute_target', normalizeDecimalInput(document.getElementById('minute-target').value));
+            for (let i = 0; i < 24; i++) formData.append('h' + i, hourOffsets[i]);
+            for (let i = 0; i < 60; i++) formData.append('m' + i, minuteOffsets[i]);
+            setOffsetRequestBusy(true);
+            try {
+                await postCommand('/set-offsets', { method: 'POST', body: formData });
+                savedHourOffsets = submittedHours;
+                savedMinuteOffsets = submittedMinutes;
+                if (offsetsRevision === revision) offsetsChanged = false;
+                updateSaveButtonState();
+            } catch (error) {
+                markUnsaved();
+                alert('Save failed: ' + error.message);
+            } finally {
+                setOffsetRequestBusy(false);
+            }
         }
 
         document.addEventListener('DOMContentLoaded', function () {
@@ -780,13 +816,11 @@ const char CONFIG_HTML[] = R"rawliteral(
                             return;
                         }
 
-                        fetch(action, {
+                        postCommand(action, {
                             method: method || 'post',
                             body: new FormData(form)
-                        }).then(res => res.text())
-                            .then(data => {
-                                console.log(data);
-                            });
+                        }).then(console.log)
+                          .catch(error => alert(error.message));
                     }
                 })
             });
@@ -809,9 +843,7 @@ const char CONFIG_HTML[] = R"rawliteral(
                     }
 
                     // Offsets
-                    hourOffsets = data.offsets.hours;
-                    minuteOffsets = data.offsets.minutes;
-                    renderOffsets();
+                    mergeSavedOffsets(data.offsets);
 
                     // Other settings
                     if(data.wifi_ssid) document.getElementById('wifi-ssid').value = data.wifi_ssid;
@@ -826,37 +858,32 @@ const char CONFIG_HTML[] = R"rawliteral(
                 });
         });
 
-        function liveCalibrate(type, direction) {
+        let liveCalibrationPending = false;
+        async function liveCalibrate(type, direction) {
+            if (liveCalibrationPending || document.getElementById('save-offsets-btn').disabled) return;
+            liveCalibrationPending = true;
+            setOffsetRequestBusy(true);
             const formData = new FormData();
             formData.append('type', type);
             formData.append('direction', direction);
-            
-            fetch('/live-calibrate', {
-                method: 'POST',
-                body: formData
-            }).then(res => res.text())
-                .then(data => {
-                    console.log('Live calibrate:', data);
-                    // Refresh offsets to update the UI
-                    return fetch('/get-settings');
-                })
-                .then(response => response.json())
-                .then(data => {
-                    hourOffsets = data.offsets.hours;
-                    minuteOffsets = data.offsets.minutes;
-                    renderOffsets();
-                });
+            try {
+                await postCommand('/live-calibrate', { method: 'POST', body: formData });
+                const response = await fetch('/get-settings', { cache: 'no-store' });
+                if (!response.ok) throw new Error(await response.text());
+                const data = await response.json();
+                mergeSavedOffsets(data.offsets);
+            } catch (error) {
+                alert('Calibration failed: ' + error.message);
+            } finally {
+                liveCalibrationPending = false;
+                setOffsetRequestBusy(false);
+            }
         }
 
         function fastForward(type) {
             const endpoint = type === 'hours' ? '/fast-forward-hours' : '/fast-forward-minutes';
-            
-            fetch(endpoint, {
-                method: 'POST'
-            }).then(res => res.text())
-                .then(data => {
-                    console.log('Fast forward:', data);
-                });
+            postCommand(endpoint, { method: 'POST' })
+                .then(console.log).catch(error => alert(error.message));
         }
 
         if (!!window.EventSource) {

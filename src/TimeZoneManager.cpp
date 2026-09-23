@@ -5,8 +5,6 @@
 #include "TimeZoneManager.h"
 #include "settings.h"
 
-Preferences preferences;
-
 void TimeZoneManager::set_logger(logger_cb_t logger) {
   _logger = logger;
 }
@@ -37,9 +35,10 @@ void TimeZoneManager::set(String tz) {
 
   _preferences.begin("time", false);
   _preferences.putString("tz", String(posix));
+  _preferences.putString("tz_name", tz);
   _preferences.end();
 
-  (*_logger)("Set time zone to %s", tz);
+  (*_logger)("Set time zone to %s", tz.c_str());
   (*_logger)("TZ = %s", posix);
 }
 
@@ -54,12 +53,12 @@ void TimeZoneManager::set_from_api() {
   int httpResponseCode = http.GET();
 
   String payload = "";
-  if (httpResponseCode > 0) {
+  if (httpResponseCode == 200) {
     payload = http.getString();
     payload.trim();
     set(payload);
   } else {
-    (*_logger)("Error code: %s", httpResponseCode);
+    (*_logger)("Time zone HTTP error: %d", httpResponseCode);
   }
   http.end();
   #endif
