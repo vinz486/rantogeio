@@ -11,7 +11,8 @@ template <size_t Digits>
 class MotionAxis {
 public:
   struct Move { int steps; int destination; int remainder; };
-  explicit MotionAxis(int32_t target = 100) : _target(target) {}
+  explicit MotionAxis(int32_t target = 100, int stepLimit = INT_MAX)
+    : _target(target), _stepLimit(stepLimit) {}
 
   // Load settings against a manually established position reference.
   bool configure(int32_t target, const int32_t* offsets) {
@@ -38,12 +39,12 @@ public:
     return true;
   }
 
-  bool plan(Move& move) const {
+  bool plan(Move& move, bool referenced = true) const {
     move.destination = (_position + 1) % Digits;
     const int fraction = _remainder + _target % 100;
-    const int64_t steps = int64_t(_target / 100) + _offsets[move.destination]
-                        - _appliedOffset + fraction / 100;
-    if (_target < 100 || steps <= 0 || steps > INT_MAX) return false;
+    const int64_t correction = referenced ? int64_t(_offsets[move.destination]) - _appliedOffset : 0;
+    const int64_t steps = int64_t(_target / 100) + correction + fraction / 100;
+    if (_target < 100 || steps <= 0 || steps > _stepLimit) return false;
     move.steps = int(steps);
     move.remainder = fraction % 100;
     return true;
@@ -66,9 +67,13 @@ public:
 
   bool set_position(int position) {
     if (position < 0 || position >= int(Digits)) return false;
+    if (_position == position) return true;
+    rebase_position(position);
+    return true;
+  }
+  void rebase_position(int position) {
     _position = position;
     _appliedOffset = _offsets[position];
-    return true;
   }
   void adjust_position(int delta) {
     set_position(int((int64_t(_position) + delta) % int(Digits) + int(Digits)) % int(Digits));
@@ -80,6 +85,7 @@ public:
 
 private:
   int32_t _target;
+  int _stepLimit;
   int32_t _offsets[Digits] = {};
   int32_t _appliedOffset = 0;
   int _position = 0;
@@ -95,10 +101,10 @@ private:
     for (size_t i = 0; i < Digits; ++i) {
       const int64_t steps = int64_t(_target / 100) + _offsets[i]
                           - _offsets[(i + Digits - 1) % Digits];
-      if (steps <= 0 || steps + extra > INT_MAX) return false;
+      if (steps <= 0 || steps + extra > _stepLimit) return false;
     }
     const int64_t next = int64_t(_target / 100) + _offsets[(_position + 1) % Digits] - _appliedOffset;
-    return next > 0 && next + extra <= INT_MAX;
+    return next > 0 && next + extra <= _stepLimit;
   }
 };
 

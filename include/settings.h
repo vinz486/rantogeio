@@ -1,10 +1,8 @@
 // ---- FEATURES -------------------
 
 
-#define ENABLE_WIFI 1
 #define ENABLE_SNTP 1
 #define ENABLE_BUTTONS 1
-#define ENABLE_OTA 1
 #define ENABLE_GPS 0
 
 // ---- PIN MAPPING ----------------

@@ -1,6 +1,24 @@
 #include "StepperDriver.h"
 #include "settings.h"
 
+namespace {
+constexpr int HOUR_SLOTS = 12;
+constexpr int MINUTE_SLOTS = 5;
+constexpr int PULSE_US = 5;
+constexpr int WAKE_US = 2000;
+constexpr int MOVE_BUDGET_US = 10000000;
+
+int slotDelay(bool slow) {
+  return STEP_INTERVAL * (slow ? 4 : 1);
+}
+}
+
+int StepperDriver::stepLimit(bool hour, bool slow) {
+  // Budget for two pulses per slot so either axis can run in parallel.
+  return (MOVE_BUDGET_US - WAKE_US) /
+         ((hour ? HOUR_SLOTS : MINUTE_SLOTS) * (slotDelay(slow) + 2 * PULSE_US));
+}
+
 void StepperDriver::begin() {
   pinMode(PIN_HOUR_STEP, OUTPUT);
   pinMode(PIN_HOUR_SLEEP, OUTPUT);
@@ -19,25 +37,25 @@ bool StepperDriver::move(int hour_steps, int minute_steps, bool slow) {
   const bool minute = minute_steps > 0;
   if (hour) digitalWrite(PIN_HOUR_SLEEP, LOW);
   if (minute) digitalWrite(PIN_MINUTE_SLEEP, LOW);
-  delayMicroseconds(2000);
+  delayMicroseconds(WAKE_US);
 
   // Preserve normal 12:5 pulse scheduling and slower calibration speed.
   int slot = 0;
   while (hour_steps > 0 || minute_steps > 0) {
     slot = (slot + 1) % 60;
-    if (slot % 5 == 0 && minute_steps > 0) {
+    if (slot % MINUTE_SLOTS == 0 && minute_steps > 0) {
       digitalWrite(PIN_MINUTE_STEP, HIGH);
-      delayMicroseconds(5);
+      delayMicroseconds(PULSE_US);
       digitalWrite(PIN_MINUTE_STEP, LOW);
       --minute_steps;
     }
-    if (slot % 12 == 0 && hour_steps > 0) {
+    if (slot % HOUR_SLOTS == 0 && hour_steps > 0) {
       digitalWrite(PIN_HOUR_STEP, HIGH);
-      delayMicroseconds(5);
+      delayMicroseconds(PULSE_US);
       digitalWrite(PIN_HOUR_STEP, LOW);
       --hour_steps;
     }
-    delayMicroseconds(STEP_INTERVAL * (slow ? 4 : 1));
+    delayMicroseconds(slotDelay(slow));
   }
   if (hour) digitalWrite(PIN_HOUR_SLEEP, HIGH);
   if (minute) digitalWrite(PIN_MINUTE_SLEEP, HIGH);

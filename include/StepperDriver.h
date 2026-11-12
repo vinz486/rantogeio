@@ -5,6 +5,7 @@
 class StepperDriver {
 public:
   void begin();
+  static int stepLimit(bool hour, bool slow = false);
   // Exact pulse counts: zero disables an axis; negative counts are rejected.
   // Only ClockManager::tick() in the Arduino loop task may call this.
   bool move(int hour_steps, int minute_steps, bool slow = false);

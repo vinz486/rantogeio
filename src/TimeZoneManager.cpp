@@ -3,51 +3,49 @@
 #include <HTTPClient.h>
 
 #include "TimeZoneManager.h"
-#include "settings.h"
 
 void TimeZoneManager::set_logger(logger_cb_t logger) {
   _logger = logger;
 }
 
 
-void TimeZoneManager::begin(ClockManager *clock) {
-  _preferences.begin("time", false);
-  String tz = _preferences.getString("tz", "");
-  _preferences.end();
+void TimeZoneManager::begin() {
+  Preferences prefs;
+  prefs.begin("time", true);
+  const String name = prefs.getString("tz_name", "");
+  const String legacy = prefs.getString("tz", "");
+  prefs.end();
+  const char* tz = convert_name(name.c_str());
+  if (!tz && name.isEmpty() && !legacy.isEmpty()) tz = legacy.c_str();
 
-  if (tz != "") {
-    setenv("TZ", tz.c_str(), 1);
-    tzset();
-    (*_logger)("Loaded TZ = %s", tz.c_str());
-  } else {
-    if (WiFi.status() == WL_CONNECTED) {
-      set_from_api();
-    }
+  if (tz) {
+    _configured = setenv("TZ", tz, 1) == 0;
+    if (_configured) tzset();
+    if (_configured && _logger) (*_logger)("Loaded TZ = %s", tz);
   }
-
-  clock->set_displayed_time_to_current();
 }
 
-void TimeZoneManager::set(String tz) {
+TimeZoneManager::Result TimeZoneManager::set(const String& tz) {
   const char* posix = convert_name(tz.c_str());
-  setenv("TZ", posix, 1);
+  if (!posix) return Result::UNKNOWN_ZONE;
+  Preferences prefs;
+  if (!prefs.begin("time", false)) return Result::SAVE_FAILED;
+  const bool saved = prefs.putString("tz_name", tz) > 0;
+  prefs.end();
+  if (!saved) return Result::SAVE_FAILED;
+
+  if (setenv("TZ", posix, 1) != 0) return Result::SAVE_FAILED;
   tzset();
-
-  _preferences.begin("time", false);
-  _preferences.putString("tz", String(posix));
-  _preferences.putString("tz_name", tz);
-  _preferences.end();
-
-  (*_logger)("Set time zone to %s", tz.c_str());
-  (*_logger)("TZ = %s", posix);
+  _configured = true;
+  if (_logger) (*_logger)("Set time zone to %s (%s)", tz.c_str(), posix);
+  return Result::OK;
 }
 
-void TimeZoneManager::set_from_api() {
-  #if ENABLE_WIFI == 1
+String TimeZoneManager::fetch_from_api() {
   WiFiClient client;
   HTTPClient http;
 
-  (*_logger)("Requesting time zone from ip-api.com");
+  if (_logger) (*_logger)("Requesting time zone from ip-api.com");
 
   http.begin(client, "http://ip-api.com/line/?fields=256");
   int httpResponseCode = http.GET();
@@ -56,15 +54,18 @@ void TimeZoneManager::set_from_api() {
   if (httpResponseCode == 200) {
     payload = http.getString();
     payload.trim();
-    set(payload);
   } else {
-    (*_logger)("Time zone HTTP error: %d", httpResponseCode);
+    if (_logger) (*_logger)("Time zone HTTP error: %d", httpResponseCode);
   }
   http.end();
-  #endif
+  return payload;
 }
 
 const char* TimeZoneManager::convert_name(const char* tzdata) {
+  if (strcmp(tzdata, "UTC") == 0 || strcmp(tzdata, "UTC0") == 0) return "UTC0";
+  if (strcmp(tzdata, "America/Asuncion") == 0) return "<-03>3";
+  // These zones need dated transitions beyond what a recurring POSIX rule can express.
+  if (strcmp(tzdata, "Africa/Casablanca") == 0 || strcmp(tzdata, "Africa/El_Aaiun") == 0) return nullptr;
   int offset = 0;
   const char* current = TIME_ZONE_NAMES;
   while (strlen(current) > 0) {
@@ -81,5 +82,5 @@ const char* TimeZoneManager::convert_name(const char* tzdata) {
     offset++;
   }
 
-  return "UTC0";
+  return nullptr;
 }

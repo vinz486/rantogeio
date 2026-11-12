@@ -8,14 +8,16 @@
 
 class TimeZoneManager {
 public:
-  void begin(ClockManager *clock);
-  void set(String tz);
-  void set_from_api();
+  void begin();
+  enum class Result { OK, UNKNOWN_ZONE, SAVE_FAILED };
+  Result set(const String& tz);
+  String fetch_from_api();
+  bool configured() const { return _configured; }
   void set_logger(logger_cb_t logger);
 
 private:
-  Preferences _preferences;
-  logger_cb_t _logger;
+  logger_cb_t _logger = nullptr;
+  bool _configured = false;
 
   const char* convert_name(const char* tzdata);  
 };

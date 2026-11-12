@@ -1,7 +1,6 @@
 #include "Arduino.h"
 #include "Preferences.h"
 #include "freertos/queue.h"
-#include "CASIO.h"
 #include <deque>
 #include <memory>
 #include <mutex>
@@ -19,6 +18,8 @@ struct HostQueue {
   HostQueue(size_t capacity, size_t itemSize) : capacity(capacity), itemSize(itemSize) {}
 };
 static std::vector<std::unique_ptr<HostQueue>> queues;
+std::function<void()> beforeQueueReceive;
+std::function<void()> afterCriticalExit;
 QueueHandle_t xQueueCreate(unsigned int count, size_t size) {
   queues.emplace_back(new HostQueue(count, size));
   return queues.back().get();
@@ -31,6 +32,11 @@ int xQueueSend(QueueHandle_t queue, const void* item, unsigned int) {
   return 1;
 }
 int xQueueReceive(QueueHandle_t queue, void* item, unsigned int) {
+  if (beforeQueueReceive) {
+    auto callback = std::move(beforeQueueReceive);
+    beforeQueueReceive = nullptr;
+    callback();
+  }
   std::lock_guard<std::mutex> lock(queue->mutex);
   if (queue->items.empty()) return 0;
   memcpy(item, queue->items.front().data(), queue->itemSize);
@@ -39,11 +45,13 @@ int xQueueReceive(QueueHandle_t queue, void* item, unsigned int) {
 }
 
 int pinState[40] = {};
+int pinModes[40] = {};
+unsigned int tones = 0;
 int64_t pulses[40] = {};
 int64_t disabledPulses = 0;
 uint64_t elapsedMicros = 0;
 std::function<void()> duringMove;
-void pinMode(int, int) {}
+void pinMode(int pin, int mode) { pinModes[pin] = mode; }
 void digitalWrite(int pin, int value) {
   if (value == HIGH && pinState[pin] == LOW && (pin == 18 || pin == 21)) {
     ++pulses[pin];
@@ -61,6 +69,7 @@ void delayMicroseconds(unsigned int us) {
 }
 unsigned long millis() { return elapsedMicros / 1000; }
 static time_t fakeNow = 1700000000;
+static bool fakeNtpEnabled = false;
 extern "C" time_t time(time_t* out) noexcept {
   if (out) *out = fakeNow;
   return fakeNow;
@@ -69,13 +78,17 @@ extern "C" int settimeofday(const struct timeval* tv, const struct timezone*) no
   fakeNow = tv->tv_sec;
   return 0;
 }
-void configTime(long, int, const char*) {}
-bool getLocalTime(struct tm* value) { return localtime_r(&fakeNow, value) != nullptr; }
-void CASIO::set_casio(const String&) {}
-void CASIO::beep(int) {}
-void CASIO::beep() {}
+void sntp_init() { fakeNtpEnabled = true; }
+void sntp_stop() { fakeNtpEnabled = false; }
+void advanceWallTime(time_t seconds) { fakeNow += seconds; }
+bool networkTimeEnabled() { return fakeNtpEnabled; }
+void delay(unsigned long ms) { elapsedMicros += ms * 1000; }
+void tone(int, unsigned int, unsigned long) { ++tones; }
 
 #include "HTTPClient.h"
+#include "ESPmDNS.h"
+HostSerial Serial;
+HostMDNS MDNS;
 HostWiFi WiFi;
 namespace http {
 int status = -1;
